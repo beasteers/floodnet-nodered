@@ -36,18 +36,5 @@
         "x": 530,
         "y": 360,
         "wires": []
-    },
-    {
-        "id": "29f79377e08a5c09",
-        "type": "complete",
-        "z": "16faf122c54b8ace",
-        "name": "",
-        "scope": [],
-        "uncaught": false,
-        "x": 460,
-        "y": 240,
-        "wires": [
-            []
-        ]
     }
 ]
