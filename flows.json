@@ -62,5 +62,29 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "e95b1d73f9304d5a",
+        "type": "status",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "scope": null,
+        "x": 630,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "538193a5a4bdff06",
+        "type": "link in",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "links": [],
+        "x": 425,
+        "y": 360,
+        "wires": [
+            []
+        ]
     }
 ]
