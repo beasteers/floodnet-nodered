@@ -7,36 +7,147 @@
         "info": ""
     },
     {
-        "id": "9dab753862135266",
-        "type": "inject",
-        "z": "b8f9c9a92652ae8e",
+        "id": "8f7859036b247ff4",
+        "type": "mqtt-broker",
         "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 260,
-        "y": 220,
+        "broker": "nam1.cloud.thethings.network",
+        "port": "8883",
+        "tls": "4ad802e2463acc54",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    },
+    {
+        "id": "4ad802e2463acc54",
+        "type": "tls-config",
+        "name": "",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "servername": "",
+        "verifyservercert": true,
+        "alpnprotocol": ""
+    },
+    {
+        "id": "fb2a3684.cf4c38",
+        "type": "mqtt-broker",
+        "z": "b8f9c9a92652ae8e",
+        "broker": "eu.thethings.network",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "verifyservercert": true,
+        "protocolVersion": 4,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": null,
+        "birthPayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": null,
+        "willPayload": ""
+    },
+    {
+        "id": "d5ace342b009a2b0",
+        "type": "mqtt in",
+        "z": "b8f9c9a92652ae8e",
+        "name": "TTN MQTT input",
+        "topic": "#",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "8f7859036b247ff4",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 100,
+        "y": 140,
         "wires": [
             [
-                "852225c001fa224a"
+                "d4dd1fb1.22cae"
             ]
         ]
     },
     {
-        "id": "852225c001fa224a",
+        "id": "d4dd1fb1.22cae",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "TTN processor",
+        "func": "var uplink_info = msg.payload['uplink_message'];\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar measures = {\n            ts: Date.parse(uplink_info['received_at']),\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n        \ngw_object = uplink_info['rx_metadata'];\n\n\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\n// tags['gwobject'] = gw_object;\n// tags['gwobjectsorted'] = gw_object_sorted;\n\n// gw_object_sorted = gw_object.sort(function(a, b) {\n//   return a.rssi - b.rssi;\n// });\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    measures['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    measures['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\n// const keys = Object.keys(uplink_info['decoded_payload']);\n\n// for (var key of keys) {\n//     measures[key] = uplink_info['decoded_payload'][key];\n// }\n\nraw_payload = uplink_info['frm_payload'];\nfunction s(x) {return x.charCodeAt(0);}\nraw_payload = raw_payload.split('').map(s);\n\nreturn { payload: \n    [\n        measures,\n        tags,\n        raw_payload\n    ]\n};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 200,
+        "wires": [
+            [
+                "4f19e58b65fd28a1",
+                "6d447db06017ced6"
+            ]
+        ]
+    },
+    {
+        "id": "4f19e58b65fd28a1",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "func": "measures = msg.payload[0];\ntags = msg.payload[1];\nb = msg.payload[2];\n\n\n// Error Flags\n/*\nFormat:\n|--------------------------------------------- Error Flags  -----------------------------------------------------------------------------------------------------------|\n|     bit 7                                                    |     bit 6   |     bit 5    |     bit 4    |     bit 3    |     bit 2    |     bit 1    |     bit 0    |\n|     Used only for CFG update (all other bits are high)       |             |              |              |              |              |              | SD error flag|\n255 or FF is a CFG update\n*/\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n} else {\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    measures['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    measures['dist_mm'] = distance;\n    \n    if (b[5]!== null){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        measures['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        measures['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        measures['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        measures['humid_percen'] = humidity;\n    }\n}\n\nreturn { payload: \n  [\n  measures,\n  tags\n  ]\n};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 670,
+        "y": 120,
+        "wires": [
+            [
+                "513fbc9cc32e5fc3"
+            ]
+        ]
+    },
+    {
+        "id": "513fbc9cc32e5fc3",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 820,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "6d447db06017ced6",
         "type": "debug",
         "z": "b8f9c9a92652ae8e",
         "name": "",
@@ -47,44 +158,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 530,
-        "y": 120,
+        "x": 700,
+        "y": 280,
         "wires": []
-    },
-    {
-        "id": "c103b8d1f49e5069",
-        "type": "status",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "scope": null,
-        "x": 470,
-        "y": 300,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "e95b1d73f9304d5a",
-        "type": "status",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "scope": null,
-        "x": 630,
-        "y": 240,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "538193a5a4bdff06",
-        "type": "link in",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "links": [],
-        "x": 425,
-        "y": 360,
-        "wires": [
-            []
-        ]
     }
 ]
