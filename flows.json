@@ -51,29 +51,37 @@
         "id": "fb2a3684.cf4c38",
         "type": "mqtt-broker",
         "z": "b8f9c9a92652ae8e",
-        "broker": "eu.thethings.network",
-        "port": "1883",
+        "name": "",
+        "broker": "nam1.cloud.thethings.network",
+        "port": "8883",
+        "tls": "4ad802e2463acc54",
         "clientid": "",
         "autoConnect": true,
-        "usetls": false,
+        "usetls": true,
         "verifyservercert": true,
-        "protocolVersion": 4,
+        "protocolVersion": "4",
         "keepalive": "60",
         "cleansession": true,
         "birthTopic": "",
         "birthQos": "0",
         "birthRetain": null,
         "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closePayload": "",
+        "closeMsg": {},
         "willTopic": "",
         "willQos": "0",
         "willRetain": null,
-        "willPayload": ""
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
     },
     {
         "id": "d5ace342b009a2b0",
         "type": "mqtt in",
         "z": "b8f9c9a92652ae8e",
-        "name": "TTN MQTT input",
+        "name": "FloodNet - floodnet_flood_sensor",
         "topic": "#",
         "qos": "0",
         "datatype": "json",
@@ -82,11 +90,11 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 100,
+        "x": 150,
         "y": 140,
         "wires": [
             [
-                "d4dd1fb1.22cae"
+                "1067cdc9ebf0532f"
             ]
         ]
     },
@@ -94,19 +102,18 @@
         "id": "d4dd1fb1.22cae",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "TTN processor",
-        "func": "var uplink_info = msg.payload['uplink_message'];\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar measures = {\n            ts: Date.parse(uplink_info['received_at']),\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n        \ngw_object = uplink_info['rx_metadata'];\n\n\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\n// tags['gwobject'] = gw_object;\n// tags['gwobjectsorted'] = gw_object_sorted;\n\n// gw_object_sorted = gw_object.sort(function(a, b) {\n//   return a.rssi - b.rssi;\n// });\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    measures['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    measures['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\n// const keys = Object.keys(uplink_info['decoded_payload']);\n\n// for (var key of keys) {\n//     measures[key] = uplink_info['decoded_payload'][key];\n// }\n\nraw_payload = uplink_info['frm_payload'];\nfunction s(x) {return x.charCodeAt(0);}\nraw_payload = raw_payload.split('').map(s);\n\nreturn { payload: \n    [\n        measures,\n        tags,\n        raw_payload\n    ]\n};",
+        "name": "TTN V3 JSON processor",
+        "func": "var uplink_info = msg.payload['uplink_message'];\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar measures = {\n            ts: Date.parse(uplink_info['received_at']),\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    measures['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    measures['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString();\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = binary_string.charCodeAt(i);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        measures,\n        tags,\n        b\n        \n    ], 'app_type': msg['app_type']\n};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 460,
-        "y": 200,
+        "x": 710,
+        "y": 160,
         "wires": [
             [
-                "4f19e58b65fd28a1",
-                "6d447db06017ced6"
+                "9426b45005b4832d"
             ]
         ]
     },
@@ -114,15 +121,15 @@
         "id": "4f19e58b65fd28a1",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "func": "measures = msg.payload[0];\ntags = msg.payload[1];\nb = msg.payload[2];\n\n\n// Error Flags\n/*\nFormat:\n|--------------------------------------------- Error Flags  -----------------------------------------------------------------------------------------------------------|\n|     bit 7                                                    |     bit 6   |     bit 5    |     bit 4    |     bit 3    |     bit 2    |     bit 1    |     bit 0    |\n|     Used only for CFG update (all other bits are high)       |             |              |              |              |              |              | SD error flag|\n255 or FF is a CFG update\n*/\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n} else {\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    measures['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    measures['dist_mm'] = distance;\n    \n    if (b[5]!== null){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        measures['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        measures['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        measures['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        measures['humid_percen'] = humidity;\n    }\n}\n\nreturn { payload: \n  [\n  measures,\n  tags\n  ]\n};",
+        "name": "Payload decoder - flood sensor",
+        "func": "measures = msg.payload[0];\ntags = msg.payload[1];\nb = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    measures['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    measures['dist_mm'] = distance;\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        measures['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        measures['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        measures['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        measures['humid_percen'] = humidity;\n    }\n}\n\nreturn { payload: \n  [\n  measures,\n  tags\n  ]\n};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 670,
-        "y": 120,
+        "x": 430,
+        "y": 300,
         "wires": [
             [
                 "513fbc9cc32e5fc3"
@@ -133,7 +140,7 @@
         "id": "513fbc9cc32e5fc3",
         "type": "debug",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "Flood sensor out",
         "active": true,
         "tosidebar": true,
         "console": false,
@@ -142,24 +149,136 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 820,
-        "y": 200,
+        "x": 750,
+        "y": 300,
         "wires": []
     },
     {
-        "id": "6d447db06017ced6",
+        "id": "e4643fc3dea28a2f",
+        "type": "mqtt in",
+        "z": "b8f9c9a92652ae8e",
+        "name": "FloodNet - floodnet_gw_rain_gauge",
+        "topic": "#",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "fb2a3684.cf4c38",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 140,
+        "y": 200,
+        "wires": [
+            [
+                "7b436745f96901d0"
+            ]
+        ]
+    },
+    {
+        "id": "cd90496796909420",
         "type": "debug",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "Rain guage out",
         "active": true,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "false",
+        "complete": "payload",
+        "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 700,
-        "y": 280,
+        "x": 760,
+        "y": 360,
         "wires": []
+    },
+    {
+        "id": "1067cdc9ebf0532f",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "Add 'flood_sensor' sensor type",
+        "func": "msg['app_type'] = 'flood_sensor';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 140,
+        "wires": [
+            [
+                "d4dd1fb1.22cae"
+            ]
+        ]
+    },
+    {
+        "id": "7b436745f96901d0",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "Add 'gw_rain_gauge' sensor type",
+        "func": "msg['app_type'] = 'gw_rain_gauge';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 200,
+        "wires": [
+            [
+                "d4dd1fb1.22cae"
+            ]
+        ]
+    },
+    {
+        "id": "9426b45005b4832d",
+        "type": "switch",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "property": "app_type",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "flood_sensor",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "gw_rain_gauge",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 130,
+        "y": 340,
+        "wires": [
+            [
+                "4f19e58b65fd28a1"
+            ],
+            [
+                "a4c825bdcb08158d"
+            ]
+        ]
+    },
+    {
+        "id": "a4c825bdcb08158d",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "Payload decoder - gw rain gauge",
+        "func": "measures = msg.payload[0];\ntags = msg.payload[1];\nb = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    measures['acc'] = acc;\n    measures['event_acc'] = eventAcc;\n    measures['total_acc'] = totalAcc;\n    measures['r_int_hr'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = units;\n}\n\nreturn { payload: \n  [\n  measures,\n  tags\n  ]\n};",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 360,
+        "wires": [
+            [
+                "cd90496796909420"
+            ]
+        ]
     }
 ]
