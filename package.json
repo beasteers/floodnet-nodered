@@ -2,7 +2,9 @@
     "name": "floodnet-nodered",
     "description": "A Node-RED Project",
     "version": "0.0.1",
-    "dependencies": {},
+    "dependencies": {
+        "node-red-contrib-influxdb": "~0.6.1"
+    },
     "node-red": {
         "settings": {
             "flowFile": "flows.json",
