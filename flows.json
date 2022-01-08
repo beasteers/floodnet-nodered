@@ -125,7 +125,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "TTN V3 JSON processor",
-        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == 'undefined')\n    return msg;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar measures = {\n            ts: Date.parse(uplink_info['received_at']),\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    measures['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    measures['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString();\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = binary_string.charCodeAt(i);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        measures,\n        tags,\n        b\n        \n    ], 'app_type': msg['app_type']\n};",
+        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == 'undefined')\n    return msg;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString();\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = binary_string.charCodeAt(i);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -144,7 +144,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - flood sensor",
-        "func": "measures = msg.payload[0];\ntags = msg.payload[1];\nb = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    measures['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    measures['dist_mm'] = distance;\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        measures['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        measures['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        measures['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        measures['humid_percen'] = humidity;\n    }\n}\n\nreturn { payload: \n  [\n  measures,\n  tags\n  ]\n};",
+        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nb = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance;\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -153,25 +153,10 @@
         "x": 430,
         "y": 300,
         "wires": [
-            []
+            [
+                "59c384dba7c30e0d"
+            ]
         ]
-    },
-    {
-        "id": "513fbc9cc32e5fc3",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "Flood sensor out",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 750,
-        "y": 300,
-        "wires": []
     },
     {
         "id": "e4643fc3dea28a2f",
@@ -278,7 +263,8 @@
         "y": 340,
         "wires": [
             [
-                "4f19e58b65fd28a1"
+                "4f19e58b65fd28a1",
+                "6268df4c0a325049"
             ],
             [
                 "a4c825bdcb08158d"
@@ -293,7 +279,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - gw rain gauge",
-        "func": "measures = msg.payload[0];\ntags = msg.payload[1];\nb = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    measures['acc'] = acc;\n    measures['event_acc'] = eventAcc;\n    measures['total_acc'] = totalAcc;\n    measures['r_int_hr'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = units;\n}\n\nreturn { payload: \n  [\n  measures,\n  tags\n  ]\n};",
+        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nvar b = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    fields['acc'] = acc;\n    fields['event_acc'] = eventAcc;\n    fields['total_acc'] = totalAcc;\n    fields['r_int_hr'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = units;\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -302,7 +288,9 @@
         "x": 440,
         "y": 360,
         "wires": [
-            []
+            [
+                "59c384dba7c30e0d"
+            ]
         ]
     },
     {
@@ -322,10 +310,67 @@
         "wires": []
     },
     {
+        "id": "6268df4c0a325049",
+        "type": "switch",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "property": "payload[2]",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "null"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 250,
+        "y": 240,
+        "wires": [
+            [
+                "513fbc9cc32e5fc3"
+            ]
+        ]
+    },
+    {
+        "id": "59c384dba7c30e0d",
+        "type": "influxdb batch",
+        "z": "b8f9c9a92652ae8e",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "Sensor data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet_test",
+        "x": 830,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "513fbc9cc32e5fc3",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "Flood sensor out",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 870,
+        "y": 240,
+        "wires": []
+    },
+    {
         "id": "62f132ed4b7660a9",
         "type": "http request",
         "z": "59b6ea3e0dab2122",
-        "name": "",
+        "name": "MN request",
         "method": "GET",
         "ret": "txt",
         "paytoqs": "ignore",
@@ -347,7 +392,7 @@
         "id": "4f87538ceb946c0d",
         "type": "inject",
         "z": "59b6ea3e0dab2122",
-        "name": "",
+        "name": "Inject MN station URLs",
         "props": [
             {
                 "p": "timerange",
@@ -360,12 +405,12 @@
         ],
         "repeat": "10",
         "crontab": "",
-        "once": false,
+        "once": true,
         "onceDelay": 0.1,
         "topic": "",
         "payload": "$join(\t   [\t       'variables[]=tair@degC',\t       'variables[]=tslo@degC',\t       'variables[]=relh@percent',\t       'variables[]=precip:incremental@mm',\t       'variables[]=precip@mm',\t       'variables[]=precip_local@mm',\t       'variables[]=precip_total@mm',\t       'variables[]=precip_max_intensity@mm/min',\t       'variables[]=winds_sonic@m/s',\t       'variables[]=srad@W/m^2',\t       'variables[]=pres@millibars',\t       'variables[]=snow_depth@mm',\t       'variables[]=lat@degrees',\t       'variables[]=lon@degrees'\t   ],\t   '&'\t)",
         "payloadType": "jsonata",
-        "x": 90,
+        "x": 150,
         "y": 20,
         "wires": [
             [
@@ -423,14 +468,14 @@
         "id": "c76e21c56c558be6",
         "type": "function",
         "z": "59b6ea3e0dab2122",
-        "name": "",
+        "name": "Check for empty",
         "func": "cnt = 0;\n\nfor (const station of msg.payload){\n    cnt += Object.keys(station).length;\n}\n\nif (cnt == msg.payload.length * 4)\n    return '';\nelse\n    return msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 320,
+        "x": 410,
         "y": 20,
         "wires": [
             [
@@ -453,7 +498,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 390,
+        "x": 410,
         "y": 80,
         "wires": [
             [
@@ -473,7 +518,7 @@
         ],
         "repeat": "60",
         "crontab": "",
-        "once": false,
+        "once": true,
         "onceDelay": 0.1,
         "topic": "",
         "payload": "[\t   'https://api.weather.gov/stations/KJFK/observations/latest',\t   'https://api.weather.gov/stations/KLGA/observations/latest',\t   'https://api.weather.gov/stations/KNYC/observations/latest'\t]",
@@ -598,8 +643,8 @@
         "id": "e5a534afcfdc4833",
         "type": "function",
         "z": "59b6ea3e0dab2122",
-        "name": "Setup influx payload",
-        "func": "var data_payload = msg.payload['properties'];\nvar station_id = data_payload['rawMessage'].slice(0,4).trim().toLowerCase();\nvar sensor_id = 'nws-' + station_id;\nvar location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['timestamp']);\n// Quality control checks\n// https://madis.ncep.noaa.gov/madis_sfc_qc_notes.shtml\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temperature']['value'],\n            wind_dir_deg: data_payload['windDirection']['value'],\n            wind_speed_kmh: data_payload['windSpeed']['value'],\n            visibility: data_payload['visibility']['value'],\n            baro_pres_pa: data_payload['barometricPressure']['value'],\n            precip_last_hour_m: data_payload['precipitationLastHour']['value'],\n            relhumid_percent: +data_payload['relativeHumidity']['value'],\n            windchill_c: +data_payload['windChill']['value']\n        };\n        \nvar tags = {\n            // time: ts,\n            sensor_id: sensor_id,\n            lat: location_info['coordinates'][1],\n            lng: location_info['coordinates'][0],\n            sensor_types: 'temp,humid,precip,pres,wind',\n            sensor_name: 'NWS ' + station_id.slice(1,4).toUpperCase() + ' Weather station (' + station_id.toUpperCase() + ')'\n        };\n        \nmsg.measurement = sensor_id;\nmsg.payload = [\n    {\n        measurement: sensor_id,\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "name": "Setup NWS payload",
+        "func": "var data_payload = msg.payload['properties'];\nvar station_id = data_payload['rawMessage'].slice(0,4).trim().toLowerCase();\nvar sensor_id = 'nws-' + station_id;\nvar location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['timestamp']);\n// Quality control checks\n// https://madis.ncep.noaa.gov/madis_sfc_qc_notes.shtml\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temperature']['value'],\n            wind_dir_deg: data_payload['windDirection']['value'],\n            wind_speed_kmh: data_payload['windSpeed']['value'],\n            visibility: data_payload['visibility']['value'],\n            baro_pres_pa: data_payload['barometricPressure']['value'],\n            precip_last_hour_mm: data_payload['precipitationLastHour']['value'] * 1000,\n            relhumid_percent: +data_payload['relativeHumidity']['value'],\n            windchill_c: +data_payload['windChill']['value']\n        };\n        \nvar tags = {\n            weather_group: 'nws',\n            sensor_id: sensor_id,\n            lat: location_info['coordinates'][1],\n            lng: location_info['coordinates'][0],\n            sensor_types: 'temp,humid,precip,pres,wind',\n            sensor_name: 'NWS ' + station_id.slice(1,4).toUpperCase() + ' Weather station (' + station_id.toUpperCase() + ')'\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'weather',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -617,14 +662,14 @@
         "id": "9f175b1da3175ea9",
         "type": "function",
         "z": "59b6ea3e0dab2122",
-        "name": "Setup influx payload",
-        "func": "var data_payload = msg.payload;\nvar station_id = data_payload['station'];\nvar sensor_id = 'nyc-micronet-' + station_id.toLowerCase();\n// var location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['datetime']);\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temp_2m [degC]'] || undefined,\n            temp_slow_c: data_payload['tslo [degC]'] || undefined,\n            wind_speed_kmh: (data_payload['avg_wind_speed_sonic [m/s]'] * 3.6) || undefined,\n            baro_pres_pa: (data_payload['station_pressure [millibars]'] * 100) || undefined,\n            precip_increm_mm: data_payload['precip_incremental [mm]'] || undefined,\n            max_precip_last_5min_mm_per_min: data_payload['precip_max_intensity [mm/min]'] || undefined,\n            relhumid_percent: data_payload['relative_humidity [percent]'] || undefined,\n            wind_dir_deg: data_payload['wind_direction_sonic [degrees]'] || undefined,\n            solar_insol_wm2: data_payload['solar_insolation [W/m^2]'] || undefined,\n            snow_depth_mm: data_payload['snow_depth [mm]'] || undefined\n        };\n        \nvar tags = {\n            // time: ts,\n            sensor_id: sensor_id,\n            lat: data_payload['lat [degrees]'],\n            lng: data_payload['lon [degrees]'],\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: 'NYC Micronet weather station (' + station_id + ')'\n        };\n        \nmsg.measurement = sensor_id;\nmsg.payload = [\n    {\n        measurement: sensor_id,\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "name": "Setup MN payload",
+        "func": "var data_payload = msg.payload;\nvar station_id = data_payload['station'];\nvar sensor_id = 'nyc-micronet-' + station_id.toLowerCase();\n// var location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['datetime']);\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temp_2m [degC]'] || undefined,\n            temp_slow_c: data_payload['tslo [degC]'] || undefined,\n            wind_speed_kmh: (data_payload['avg_wind_speed_sonic [m/s]'] * 3.6) || undefined,\n            baro_pres_pa: (data_payload['station_pressure [millibars]'] * 100) || undefined,\n            precip_increm_mm: data_payload['precip_incremental [mm]'] || undefined,\n            max_precip_last_5min_mm_per_min: data_payload['precip_max_intensity [mm/min]'] || undefined,\n            relhumid_percent: data_payload['relative_humidity [percent]'] || undefined,\n            wind_dir_deg: data_payload['wind_direction_sonic [degrees]'] || undefined,\n            solar_insol_wm2: data_payload['solar_insolation [W/m^2]'] || undefined,\n            snow_depth_mm: data_payload['snow_depth [mm]'] || undefined\n        };\n        \nvar tags = {\n            weather_group: 'micronet',\n            sensor_id: sensor_id,\n            lat: data_payload['lat [degrees]'],\n            lng: data_payload['lon [degrees]'],\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: 'NYC Micronet weather station (' + station_id + ')'\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'weather',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 520,
+        "x": 510,
         "y": 200,
         "wires": [
             [
@@ -666,6 +711,259 @@
         "bucket": "floodnet_test",
         "x": 700,
         "y": 40,
+        "wires": []
+    },
+    {
+        "id": "4c44e3abc4fcd1eb",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "Open Weather API",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/2.5/onecall?lat={{{lat_lon.0}}}&lon={{{lat_lon.1}}}&exclude=hourly,daily&appid={{{appid}}}&units=metric",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 370,
+        "y": 640,
+        "wires": [
+            [
+                "20fd99b272aaccde"
+            ]
+        ]
+    },
+    {
+        "id": "c9f27f5d47a10a45",
+        "type": "inject",
+        "z": "59b6ea3e0dab2122",
+        "name": "Inject OWM locations",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3000",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[\t   [40.680092,-74.014416],\t   [40.676195,-73.986974],\t   [40.656137,-74.004471],\t   [40.598504,-73.970988],\t   [40.575299,-73.996754],\t   [40.653567,-73.923218],\t   [40.657421,-73.830684],\t   [40.611045,-73.821752],\t   [40.599055,-73.777090],\t   [40.657942,-73.753734],\t   [40.680339,-73.892870],\t   [40.714464,-73.749413],\t   [40.707177,-73.787204],\t   [40.699889,-73.831178],\t   [40.683750,-73.890956],\t   [40.699889,-73.980967],\t   [40.703533,-73.941115],\t   [40.735279,-73.949360],\t   [40.769089,-73.925311],\t   [40.754239,-73.891183],\t   [40.774001,-73.823847],\t   [40.746436,-73.725591],\t   [40.594925,-74.089129],\t   [40.562591,-74.130356],\t   [40.533894,-74.197005],\t   [40.613171,-74.159901],\t   [40.716077,-74.007504],\t   [40.755609,-74.001263],\t   [40.724654,-73.975840],\t   [40.780450,-73.966291],\t   [40.802544,-73.948427],\t   [40.865397,-73.923453],\t   [40.820639,-73.913116],\t   [40.852068,-73.903153],\t   [40.829500,-73.859615],\t   [40.882832,-73.851669],\t   [40.846075,-73.787256],\t   [40.909094,-73.906272],\t   [40.641190,-73.782933],\t   [40.775942,-73.872940]\t]",
+        "payloadType": "jsonata",
+        "x": 140,
+        "y": 520,
+        "wires": [
+            [
+                "410c903622f6c8e2"
+            ]
+        ]
+    },
+    {
+        "id": "e8f6d2b22d197f13",
+        "type": "credentials",
+        "z": "59b6ea3e0dab2122",
+        "name": "OWAPI key store",
+        "props": [
+            {
+                "value": "appid",
+                "type": "msg"
+            }
+        ],
+        "x": 230,
+        "y": 760,
+        "wires": [
+            [
+                "51effb339ea4f74e"
+            ]
+        ]
+    },
+    {
+        "id": "0193d0cc4010e60f",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "OWM setup payload",
+        "func": "var weather_payload = msg.owm;\nvar revgeocode_payload = msg.revgeocode;\nvar meas_array = [];\nvar forecast_mins = 60;\nvar sensor_id = 'owm_' + revgeocode_payload.osm_id;\nvar sensor_name = revgeocode_payload.address.neighbourhood + ' - openweathermap.org (' + sensor_id + ')';\n\nvar rain_amnt,snow_amnt = null;\n\nif (weather_payload.current.rain){\n    rain_amnt = weather_payload.current.rain['1h'];\n}\n\nif (weather_payload.current.snow){\n    snow_amnt = weather_payload.current.snow['1h'];\n}\n\n\nvar cur_weather = {\n   measurement: 'weather',\n      fields: {\n        temp_c: weather_payload.current['temp'],\n        baro_pres_pa: weather_payload.current['pressure'] * 1000,\n        relhumid_percent: weather_payload.current['humidity'],\n        cloud_percent: weather_payload.current['clouds'],\n        wind_speed_kmh: weather_payload.current['wind_speed'] * 3.6,\n        wind_dir_deg: weather_payload.current['wind_deg'],\n        precip_last_hour_mm: rain_amnt || undefined,\n        snow_last_hour_mm: snow_amnt || undefined\n      },\n      tags:{\n        weather_group: 'open_weather_map_forecast',\n        sensor_id: sensor_id,\n        lat: weather_payload.lat,\n        lng: weather_payload.lon,\n        sensor_types: 'temp,humid,precip,pres,wind,solar',\n        sensor_name: sensor_name,\n        sensor_address_zip: revgeocode_payload.address.postcode,\n        sensor_address_borough: revgeocode_payload.address.suburb,\n        sensor_address_state: revgeocode_payload.address.state,\n        sensor_address_country: revgeocode_payload.address.country,\n        sensor_address_house_number: revgeocode_payload.address.house_number,\n        sensor_address_street: revgeocode_payload.address.road,\n        sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n      },\n      timestamp: weather_payload.current['dt'] * 1000\n};\n\nmeas_array.push(cur_weather);\n\nfor (var i = 0; i < forecast_mins; i++) {\n    var min_item = weather_payload.minutely[i];\n    var min_entry = {\n      measurement: 'weather',\n      fields: {\n        precip_forecast_last_min_mm: min_item['precipitation']\n      },\n      tags:{\n        weather_group: 'open_weather_map_forecast',\n        sensor_id: sensor_id,\n        lat: weather_payload.lat,\n        lng: weather_payload.lon,\n        sensor_types: 'temp,humid,precip,pres,wind,solar',\n        sensor_name: sensor_name,\n        sensor_address_zip: revgeocode_payload.address.postcode,\n        sensor_address_borough: revgeocode_payload.address.suburb,\n        sensor_address_state: revgeocode_payload.address.state,\n        sensor_address_country: revgeocode_payload.address.country,\n        sensor_address_house_number: revgeocode_payload.address.house_number,\n        sensor_address_street: revgeocode_payload.address.road,\n        sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n      },\n      timestamp: min_item['dt'] * 1000\n    };\n    meas_array.push(min_entry);\n}\n\nmsg.payload = meas_array;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 740,
+        "y": 640,
+        "wires": [
+            [
+                "2ea12566e4a0ddc7"
+            ]
+        ]
+    },
+    {
+        "id": "f03ba767c129f69b",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "Rev geocode",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://nominatim.openstreetmap.org/reverse?format=json&lat={{{lat_lon.0}}}&lon={{{lat_lon.1}}}&zoom=18&addressdetails=1",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 530,
+        "y": 760,
+        "wires": [
+            [
+                "e45925d81c5ddfda"
+            ]
+        ]
+    },
+    {
+        "id": "410c903622f6c8e2",
+        "type": "split",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 130,
+        "y": 640,
+        "wires": [
+            [
+                "8aa86b86eaddc827"
+            ]
+        ]
+    },
+    {
+        "id": "8aa86b86eaddc827",
+        "type": "delay",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "50",
+        "nbRateUnits": "1",
+        "rateUnits": "minute",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 180,
+        "y": 700,
+        "wires": [
+            [
+                "e8f6d2b22d197f13"
+            ]
+        ]
+    },
+    {
+        "id": "20fd99b272aaccde",
+        "type": "change",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "owm",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 470,
+        "y": 700,
+        "wires": [
+            [
+                "f03ba767c129f69b"
+            ]
+        ]
+    },
+    {
+        "id": "e45925d81c5ddfda",
+        "type": "change",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "revgeocode",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 670,
+        "y": 580,
+        "wires": [
+            [
+                "0193d0cc4010e60f"
+            ]
+        ]
+    },
+    {
+        "id": "51effb339ea4f74e",
+        "type": "change",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "lat_lon",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 310,
+        "y": 580,
+        "wires": [
+            [
+                "4c44e3abc4fcd1eb"
+            ]
+        ]
+    },
+    {
+        "id": "2ea12566e4a0ddc7",
+        "type": "influxdb batch",
+        "z": "59b6ea3e0dab2122",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "OWM weather data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet_test",
+        "x": 1010,
+        "y": 640,
         "wires": []
     }
 ]
