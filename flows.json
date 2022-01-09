@@ -125,7 +125,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "TTN V3 JSON processor",
-        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == 'undefined')\n    return msg;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString();\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = binary_string.charCodeAt(i);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
+        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info === 'undefined' || msg.payload['join_accept'])\n    return msg;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString();\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = binary_string.charCodeAt(i);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -253,7 +253,9 @@
                 "vt": "str"
             },
             {
-                "t": "null"
+                "t": "eq",
+                "v": "undefined",
+                "vt": "jsonata"
             }
         ],
         "checkall": "true",
@@ -731,7 +733,7 @@
         "y": 640,
         "wires": [
             [
-                "20fd99b272aaccde"
+                "f9137c59125d3c0d"
             ]
         ]
     },
@@ -751,7 +753,7 @@
         ],
         "repeat": "3000",
         "crontab": "",
-        "once": true,
+        "once": false,
         "onceDelay": 0.1,
         "topic": "",
         "payload": "[\t   [40.680092,-74.014416],\t   [40.676195,-73.986974],\t   [40.656137,-74.004471],\t   [40.598504,-73.970988],\t   [40.575299,-73.996754],\t   [40.653567,-73.923218],\t   [40.657421,-73.830684],\t   [40.611045,-73.821752],\t   [40.599055,-73.777090],\t   [40.657942,-73.753734],\t   [40.680339,-73.892870],\t   [40.714464,-73.749413],\t   [40.707177,-73.787204],\t   [40.699889,-73.831178],\t   [40.683750,-73.890956],\t   [40.699889,-73.980967],\t   [40.703533,-73.941115],\t   [40.735279,-73.949360],\t   [40.769089,-73.925311],\t   [40.754239,-73.891183],\t   [40.774001,-73.823847],\t   [40.746436,-73.725591],\t   [40.594925,-74.089129],\t   [40.562591,-74.130356],\t   [40.533894,-74.197005],\t   [40.613171,-74.159901],\t   [40.716077,-74.007504],\t   [40.755609,-74.001263],\t   [40.724654,-73.975840],\t   [40.780450,-73.966291],\t   [40.802544,-73.948427],\t   [40.865397,-73.923453],\t   [40.820639,-73.913116],\t   [40.852068,-73.903153],\t   [40.829500,-73.859615],\t   [40.882832,-73.851669],\t   [40.846075,-73.787256],\t   [40.909094,-73.906272],\t   [40.641190,-73.782933],\t   [40.775942,-73.872940]\t]",
@@ -795,7 +797,7 @@
         "finalize": "",
         "libs": [],
         "x": 740,
-        "y": 640,
+        "y": 680,
         "wires": [
             [
                 "2ea12566e4a0ddc7"
@@ -816,8 +818,8 @@
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 530,
-        "y": 760,
+        "x": 610,
+        "y": 580,
         "wires": [
             [
                 "e45925d81c5ddfda"
@@ -887,8 +889,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 470,
-        "y": 700,
+        "x": 510,
+        "y": 760,
         "wires": [
             [
                 "f03ba767c129f69b"
@@ -914,8 +916,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 670,
-        "y": 580,
+        "x": 690,
+        "y": 640,
         "wires": [
             [
                 "0193d0cc4010e60f"
@@ -965,5 +967,28 @@
         "x": 1010,
         "y": 640,
         "wires": []
+    },
+    {
+        "id": "f9137c59125d3c0d",
+        "type": "switch",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "property": "payload.current",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nempty"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 430,
+        "y": 700,
+        "wires": [
+            [
+                "20fd99b272aaccde"
+            ]
+        ]
     }
 ]
