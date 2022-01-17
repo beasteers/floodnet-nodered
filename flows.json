@@ -7,6 +7,14 @@
         "info": ""
     },
     {
+        "id": "e3941d68335018ed",
+        "type": "tab",
+        "label": "Gateway ingestion",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "59b6ea3e0dab2122",
         "type": "tab",
         "label": "Weather ingestion",
@@ -33,7 +41,7 @@
     {
         "id": "8f7859036b247ff4",
         "type": "mqtt-broker",
-        "name": "",
+        "name": "floodnet-production",
         "broker": "nam1.cloud.thethings.network",
         "port": "8883",
         "tls": "4ad802e2463acc54",
@@ -141,7 +149,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "TTN V3 JSON processor",
-        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString();\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = binary_string.charCodeAt(i);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
+        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -227,7 +235,8 @@
         "y": 60,
         "wires": [
             [
-                "d4dd1fb1.22cae"
+                "d4dd1fb1.22cae",
+                "7a7a879a66693dbf"
             ]
         ]
     },
@@ -305,7 +314,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - gw rain gauge",
-        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nvar b = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    fields['acc'] = acc;\n    fields['event_acc'] = eventAcc;\n    fields['total_acc'] = totalAcc;\n    fields['r_int_hr'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = units;\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
+        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nvar b = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag < 253) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    fields['acc'] = acc;\n    fields['event_acc'] = eventAcc;\n    fields['total_acc'] = totalAcc;\n    fields['r_int_hr'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = units;\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -407,7 +416,8 @@
         "y": 260,
         "wires": [
             [
-                "59c384dba7c30e0d"
+                "59c384dba7c30e0d",
+                "42b4b8b302a65ceb"
             ]
         ]
     },
@@ -456,7 +466,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - tidal sensor",
-        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nb = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance;\n    \n    // depth\n    // TODO: use global var to store manually inserted MLLW value using NR GUI\n    // var night_median = global.get(tags.dev_id + '.night_median');\n    // if (night_median !== undefined){\n    //     var depth = -distance + night_median;\n    //     fields['depth_mm'] = depth;\n    // }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'tidal-sensor',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
+        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nb = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag < 253) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance;\n    \n    // depth\n    // TODO: use global var to store manually inserted MLLW value using NR GUI\n    // var night_median = global.get(tags.dev_id + '.night_median');\n    // if (night_median !== undefined){\n    //     var depth = -distance + night_median;\n    //     fields['depth_mm'] = depth;\n    // }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'tidal-sensor',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -469,6 +479,266 @@
                 "59c384dba7c30e0d"
             ]
         ]
+    },
+    {
+        "id": "42b4b8b302a65ceb",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 820,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "7a7a879a66693dbf",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "a333bbcff1929612",
+        "type": "inject",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payloadType": "date",
+        "x": 110,
+        "y": 40,
+        "wires": [
+            [
+                "d08956275a10d893"
+            ]
+        ]
+    },
+    {
+        "id": "6f0b53f20d15d5d8",
+        "type": "http request",
+        "z": "e3941d68335018ed",
+        "name": "GW ID GET",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://eu1.cloud.thethings.network/api/v3/users/{{{tti_user}}}/gateways",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 450,
+        "y": 40,
+        "wires": [
+            [
+                "cb2e8564e10f832a"
+            ]
+        ]
+    },
+    {
+        "id": "d08956275a10d893",
+        "type": "credentials",
+        "z": "e3941d68335018ed",
+        "name": "TTI token store",
+        "props": [
+            {
+                "value": "tti_user",
+                "type": "msg"
+            },
+            {
+                "value": "headers.Authorization",
+                "type": "msg"
+            }
+        ],
+        "x": 280,
+        "y": 40,
+        "wires": [
+            [
+                "6f0b53f20d15d5d8"
+            ]
+        ]
+    },
+    {
+        "id": "cb2e8564e10f832a",
+        "type": "change",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload.gateways",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 660,
+        "y": 40,
+        "wires": [
+            [
+                "c53d8aedbedb0c01"
+            ]
+        ]
+    },
+    {
+        "id": "c53d8aedbedb0c01",
+        "type": "split",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 110,
+        "y": 140,
+        "wires": [
+            [
+                "173f3a7cea0eb1df"
+            ]
+        ]
+    },
+    {
+        "id": "d55cefb55950509e",
+        "type": "http request",
+        "z": "e3941d68335018ed",
+        "name": "GW stat GET",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://nam1.cloud.thethings.network/api/v3/gs/gateways/{{{payload.ids.gateway_id}}}/connection/stats",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 670,
+        "y": 140,
+        "wires": [
+            [
+                "bdb138bb6fe7fc89"
+            ]
+        ]
+    },
+    {
+        "id": "f5f13934eb8ab41d",
+        "type": "credentials",
+        "z": "e3941d68335018ed",
+        "name": "TTI token store",
+        "props": [
+            {
+                "value": "tti_user",
+                "type": "msg"
+            },
+            {
+                "value": "headers.Authorization",
+                "type": "msg"
+            }
+        ],
+        "x": 480,
+        "y": 140,
+        "wires": [
+            [
+                "d55cefb55950509e"
+            ]
+        ]
+    },
+    {
+        "id": "173f3a7cea0eb1df",
+        "type": "change",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "gateway_id",
+                "pt": "msg",
+                "to": "payload.ids.gateway_id",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 280,
+        "y": 140,
+        "wires": [
+            [
+                "f5f13934eb8ab41d"
+            ]
+        ]
+    },
+    {
+        "id": "bdb138bb6fe7fc89",
+        "type": "function",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "func": "if (msg.statusCode == 404){\n    return undefined\n}\n\nvar gateway_id = msg.gateway_id;\nvar last_uplink_dt = Date.parse(msg.payload.last_uplink_received_at);\nvar uplink_cnt = parseInt(msg.payload.uplink_count);\nvar downlink_cnt = parseInt(msg.payload.downlink_count);\n\nvar status_object = msg.payload.last_status;\n\nvar lat;\nvar lng;\nvar altitude;\n\nif (status_object.antenna_locations){\n    lat = status_object.antenna_locations[0].latitude || undefined;\n    lng = status_object.antenna_locations[0].longitude || undefined;\n    altitude = status_object.antenna_locations[0].altitude || undefined;\n}\n\nvar id_addr = status_object.ip[0] || undefined;\n\nvar uplink_ok = status_object.metrics.rxok;\nvar uplink_recv = status_object.metrics.rxin;\nvar ack_recv = status_object.metrics.ackr;\nvar downlink_ok = status_object.metrics.txok;\nvar downlink_recv = status_object.metrics.txin;\n\nvar ts = Date.parse(status_object.time);\n\nvar fields = {\n            uplink_ok: uplink_ok || undefined,\n            uplink_recv: uplink_recv || undefined,\n            ack_recv: ack_recv || undefined,\n            downlink_ok: downlink_ok || undefined,\n            downlink_recv: downlink_recv || undefined,\n            last_uplink_dt: last_uplink_dt || undefined,\n            uplink_cnt: uplink_cnt || undefined,\n            downlink_cnt: downlink_cnt || undefined\n            \n        };\n        \nvar tags = {\n            gateway_id: gateway_id,\n            lat: lat,\n            lng: lng,\n            // TODO: add human readable name to GW creation process scripts\n            sensor_name: undefined\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'gateway',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 120,
+        "y": 220,
+        "wires": [
+            [
+                "050c9b632ed81f5d"
+            ]
+        ]
+    },
+    {
+        "id": "050c9b632ed81f5d",
+        "type": "influxdb batch",
+        "z": "e3941d68335018ed",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "GW data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet_test",
+        "x": 300,
+        "y": 220,
+        "wires": []
     },
     {
         "id": "62f132ed4b7660a9",
@@ -1368,7 +1638,7 @@
         "type": "function",
         "z": "e0603b84198efa0a",
         "name": "",
-        "func": "var data_payload = msg.payload.sites[0];\nvar station_id = data_payload.site_no;\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.station_nm;\nvar lat = data_payload.dec_lat_va;\nvar lng = data_payload.dec_long_va;\nvar ts = Date.parse(data_payload.stage_dt + ' ' + data_payload.tz_cd);\n\nvar fields = {\n            stage_mm: data_payload.stage * 304.8 || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "func": "if (msg.payload.sites == undefined){\n    return undefined;\n}\n\nvar data_payload = msg.payload.sites[0];\nvar station_id = data_payload.site_no;\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.station_nm;\nvar lat = data_payload.dec_lat_va;\nvar lng = data_payload.dec_long_va;\nvar ts = Date.parse(data_payload.stage_dt + ' ' + data_payload.tz_cd);\n\nvar fields = {\n            stage_mm: data_payload.stage * 304.8 || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
