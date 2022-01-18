@@ -4,7 +4,9 @@
     "version": "0.0.1",
     "dependencies": {
         "node-red-contrib-credentials": "~0.2.1",
-        "node-red-contrib-influxdb": "~0.6.1"
+        "node-red-contrib-influxdb": "~0.6.1",
+        "node-red-contrib-web-worldmap": "~2.25.0",
+        "node-red-dashboard": "~3.1.4"
     },
     "node-red": {
         "settings": {

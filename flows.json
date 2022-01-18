@@ -39,6 +39,14 @@
         "env": []
     },
     {
+        "id": "101718428de70120",
+        "type": "tab",
+        "label": "Sensor provisioning",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "8f7859036b247ff4",
         "type": "mqtt-broker",
         "name": "floodnet-production",
@@ -122,6 +130,119 @@
         "influxdbVersion": "2.0",
         "url": "http://influxdb:8086",
         "rejectUnauthorized": true
+    },
+    {
+        "id": "cd81d08b.eebb3",
+        "type": "ui_group",
+        "z": "101718428de70120",
+        "name": "Default",
+        "tab": "b34078e6.e60df8",
+        "order": 1,
+        "disp": true,
+        "width": "6"
+    },
+    {
+        "id": "b34078e6.e60df8",
+        "type": "ui_tab",
+        "z": "101718428de70120",
+        "name": "Home",
+        "icon": "dashboard"
+    },
+    {
+        "id": "ebb68a36bf8edca2",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey",
+                "palette": "light"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
     },
     {
         "id": "d5ace342b009a2b0",
@@ -235,8 +356,7 @@
         "y": 60,
         "wires": [
             [
-                "d4dd1fb1.22cae",
-                "7a7a879a66693dbf"
+                "d4dd1fb1.22cae"
             ]
         ]
     },
@@ -416,8 +536,7 @@
         "y": 260,
         "wires": [
             [
-                "59c384dba7c30e0d",
-                "42b4b8b302a65ceb"
+                "59c384dba7c30e0d"
             ]
         ]
     },
@@ -479,39 +598,6 @@
                 "59c384dba7c30e0d"
             ]
         ]
-    },
-    {
-        "id": "42b4b8b302a65ceb",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 820,
-        "y": 460,
-        "wires": []
-    },
-    {
-        "id": "7a7a879a66693dbf",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 720,
-        "y": 60,
-        "wires": []
     },
     {
         "id": "a333bbcff1929612",
@@ -719,7 +805,8 @@
         "y": 220,
         "wires": [
             [
-                "050c9b632ed81f5d"
+                "050c9b632ed81f5d",
+                "2af8dd0b40b61f31"
             ]
         ]
     },
@@ -738,6 +825,22 @@
         "bucket": "floodnet_test",
         "x": 300,
         "y": 220,
+        "wires": []
+    },
+    {
+        "id": "2af8dd0b40b61f31",
+        "type": "debug",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 300,
         "wires": []
     },
     {
