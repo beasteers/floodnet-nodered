@@ -1910,5 +1910,91 @@
                 "93083f815ba539af"
             ]
         ]
+    },
+    {
+        "id": "ee7d8abf6d717704",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "if (msg.payload.action == \"connected\"){\n    msg.payload={\n        \"name\": \"Sensor\",\n        \"draggable\": true,\n        \"lat\": 40.692826, \n        \"lon\": -73.987309,\n        \"icon\": \"times\"\n    };\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 220,
+        "wires": [
+            [
+                "97bc0b6454d897ef"
+            ]
+        ]
+    },
+    {
+        "id": "97bc0b6454d897ef",
+        "type": "ui_worldmap",
+        "z": "101718428de70120",
+        "group": "cd81d08b.eebb3",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "lat": "40.692826",
+        "lon": "-73.987309",
+        "zoom": "10",
+        "layer": "OSMG",
+        "cluster": "",
+        "maxage": "",
+        "usermenu": "hide",
+        "layers": "hide",
+        "panit": "true",
+        "panlock": "false",
+        "zoomlock": "false",
+        "hiderightclick": "true",
+        "coords": "deg",
+        "showgrid": "false",
+        "allowFileDrop": "false",
+        "path": "/map",
+        "overlist": "DR,CO,RA,DN,HM",
+        "maplist": "OSMG,OSMC,OSMH,EsriC,EsriS,EsriT,EsriO,EsriDG,NatGeo,UKOS,OS45,OS00,OpTop,SW",
+        "mapname": "",
+        "mapurl": "",
+        "mapopt": "",
+        "mapwms": false,
+        "x": 830,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "d995b13a825f23f8",
+        "type": "worldmap in",
+        "z": "101718428de70120",
+        "name": "",
+        "path": "/map",
+        "events": "connect,disconnect,point,layer,bounds,files,draw,other",
+        "x": 600,
+        "y": 380,
+        "wires": [
+            [
+                "f68080956c80d8ae",
+                "ee7d8abf6d717704"
+            ]
+        ]
+    },
+    {
+        "id": "f68080956c80d8ae",
+        "type": "debug",
+        "z": "101718428de70120",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 820,
+        "y": 380,
+        "wires": []
     }
 ]
