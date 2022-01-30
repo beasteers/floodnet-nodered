@@ -47,6 +47,14 @@
         "env": []
     },
     {
+        "id": "41b751a153893032",
+        "type": "tab",
+        "label": "Dev",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "8f7859036b247ff4",
         "type": "mqtt-broker",
         "name": "floodnet-production",
@@ -270,7 +278,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "TTN V3 JSON processor",
-        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
+        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi_dbm'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr_db'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep_s'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta_ms'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -434,7 +442,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - gw rain gauge",
-        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nvar b = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag < 253) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    fields['acc'] = acc;\n    fields['event_acc'] = eventAcc;\n    fields['total_acc'] = totalAcc;\n    fields['r_int_hr'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = units;\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
+        "func": "var fields = msg.payload[0];\nvar tags = msg.payload[1];\nvar b = msg.payload[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag < 253) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    fields['acc_mm'] = acc;\n    fields['event_acc_mm'] = eventAcc;\n    fields['total_acc_mm'] = totalAcc;\n    fields['r_int_hr_mm'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = units;\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -536,7 +544,8 @@
         "y": 260,
         "wires": [
             [
-                "59c384dba7c30e0d"
+                "59c384dba7c30e0d",
+                "ec19bf2e68d60fc4"
             ]
         ]
     },
@@ -598,6 +607,22 @@
                 "59c384dba7c30e0d"
             ]
         ]
+    },
+    {
+        "id": "ec19bf2e68d60fc4",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 280,
+        "wires": []
     },
     {
         "id": "a333bbcff1929612",
@@ -805,8 +830,7 @@
         "y": 220,
         "wires": [
             [
-                "050c9b632ed81f5d",
-                "2af8dd0b40b61f31"
+                "050c9b632ed81f5d"
             ]
         ]
     },
@@ -825,22 +849,6 @@
         "bucket": "floodnet_test",
         "x": 300,
         "y": 220,
-        "wires": []
-    },
-    {
-        "id": "2af8dd0b40b61f31",
-        "type": "debug",
-        "z": "e3941d68335018ed",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 320,
-        "y": 300,
         "wires": []
     },
     {
@@ -1269,7 +1277,7 @@
         "type": "function",
         "z": "59b6ea3e0dab2122",
         "name": "OWM setup payload",
-        "func": "var weather_payload = msg.owm;\nvar revgeocode_payload = msg.revgeocode;\nvar meas_array = [];\nvar forecast_mins = 60;\nvar sensor_id = 'owm_' + revgeocode_payload.osm_id;\nvar sensor_name = revgeocode_payload.address.neighbourhood + ' - openweathermap.org (' + sensor_id + ')';\n\nvar rain_amnt,snow_amnt = null;\n\nif (weather_payload.current.rain){\n    rain_amnt = weather_payload.current.rain['1h'];\n}\n\nif (weather_payload.current.snow){\n    snow_amnt = weather_payload.current.snow['1h'];\n}\n\n\nvar cur_weather = {\n   measurement: 'weather',\n      fields: {\n        temp_c: weather_payload.current['temp'],\n        baro_pres_pa: weather_payload.current['pressure'] * 1000,\n        relhumid_percent: weather_payload.current['humidity'],\n        cloud_percent: weather_payload.current['clouds'],\n        wind_speed_kmh: weather_payload.current['wind_speed'] * 3.6,\n        wind_dir_deg: weather_payload.current['wind_deg'],\n        precip_last_hour_mm: rain_amnt || undefined,\n        snow_last_hour_mm: snow_amnt || undefined\n      },\n      tags:{\n        weather_group: 'open_weather_map_forecast',\n        sensor_id: sensor_id,\n        lat: weather_payload.lat,\n        lng: weather_payload.lon,\n        sensor_types: 'temp,humid,precip,pres,wind,solar',\n        sensor_name: sensor_name,\n        sensor_address_zip: revgeocode_payload.address.postcode,\n        sensor_address_borough: revgeocode_payload.address.suburb,\n        sensor_address_state: revgeocode_payload.address.state,\n        sensor_address_country: revgeocode_payload.address.country,\n        sensor_address_house_number: revgeocode_payload.address.house_number,\n        sensor_address_street: revgeocode_payload.address.road,\n        sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n      },\n      timestamp: weather_payload.current['dt'] * 1000\n};\n\nmeas_array.push(cur_weather);\n\nif (weather_payload.minutely){\n    for (var i = 0; i < forecast_mins; i++) {\n        var min_item = weather_payload.minutely[i];\n        var min_entry = {\n          measurement: 'weather',\n          fields: {\n            precip_forecast_last_min_mm: min_item['precipitation']\n          },\n          tags:{\n            weather_group: 'open_weather_map_forecast',\n            sensor_id: sensor_id,\n            lat: weather_payload.lat,\n            lng: weather_payload.lon,\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: sensor_name,\n            sensor_address_zip: revgeocode_payload.address.postcode,\n            sensor_address_borough: revgeocode_payload.address.suburb,\n            sensor_address_state: revgeocode_payload.address.state,\n            sensor_address_country: revgeocode_payload.address.country,\n            sensor_address_house_number: revgeocode_payload.address.house_number,\n            sensor_address_street: revgeocode_payload.address.road,\n            sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n          },\n          timestamp: min_item['dt'] * 1000\n        };\n        meas_array.push(min_entry);\n    }\n}\n\nmsg.payload = meas_array;\n\nreturn msg;",
+        "func": "var weather_payload = msg.owm;\nvar revgeocode_payload = msg.revgeocode;\nvar meas_array = [];\nvar forecast_mins = 60;\nvar sensor_id = 'owm-' + revgeocode_payload.osm_id;\nvar sensor_name = revgeocode_payload.address.neighbourhood + ' - openweathermap.org (' + sensor_id + ')';\n\nvar rain_amnt,snow_amnt = null;\n\nif (weather_payload.current.rain){\n    rain_amnt = weather_payload.current.rain['1h'];\n}\n\nif (weather_payload.current.snow){\n    snow_amnt = weather_payload.current.snow['1h'];\n}\n\n\nvar cur_weather = {\n   measurement: 'weather',\n      fields: {\n        temp_c: weather_payload.current['temp'],\n        baro_pres_pa: weather_payload.current['pressure'] * 1000,\n        relhumid_percent: weather_payload.current['humidity'],\n        cloud_percent: weather_payload.current['clouds'],\n        wind_speed_kmh: weather_payload.current['wind_speed'] * 3.6,\n        wind_dir_deg: weather_payload.current['wind_deg'],\n        precip_last_hour_mm: rain_amnt || undefined,\n        snow_last_hour_mm: snow_amnt || undefined\n      },\n      tags:{\n        weather_group: 'open_weather_map_forecast',\n        sensor_id: sensor_id,\n        lat: weather_payload.lat,\n        lng: weather_payload.lon,\n        sensor_types: 'temp,humid,precip,pres,wind,solar',\n        sensor_name: sensor_name,\n        sensor_address_zip: revgeocode_payload.address.postcode,\n        sensor_address_borough: revgeocode_payload.address.suburb,\n        sensor_address_state: revgeocode_payload.address.state,\n        sensor_address_country: revgeocode_payload.address.country,\n        sensor_address_house_number: revgeocode_payload.address.house_number,\n        sensor_address_street: revgeocode_payload.address.road,\n        sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n      },\n      timestamp: weather_payload.current['dt'] * 1000\n};\n\nmeas_array.push(cur_weather);\n\nif (weather_payload.minutely){\n    for (var i = 0; i < forecast_mins; i++) {\n        var min_item = weather_payload.minutely[i];\n        var min_entry = {\n          measurement: 'weather',\n          fields: {\n            precip_forecast_last_min_mm: min_item['precipitation']\n          },\n          tags:{\n            weather_group: 'open_weather_map_forecast',\n            sensor_id: sensor_id,\n            lat: weather_payload.lat,\n            lng: weather_payload.lon,\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: sensor_name,\n            sensor_address_zip: revgeocode_payload.address.postcode,\n            sensor_address_borough: revgeocode_payload.address.suburb,\n            sensor_address_state: revgeocode_payload.address.state,\n            sensor_address_country: revgeocode_payload.address.country,\n            sensor_address_house_number: revgeocode_payload.address.house_number,\n            sensor_address_street: revgeocode_payload.address.road,\n            sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n          },\n          timestamp: min_item['dt'] * 1000\n        };\n        meas_array.push(min_entry);\n    }\n}\n\nmsg.payload = meas_array;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1597,7 +1605,7 @@
         "method": "GET",
         "ret": "obj",
         "paytoqs": "ignore",
-        "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=NOS.COOPS.TAC.WL&date=latest&datum=MLLW&station={{{payload}}}&time_zone=gmt&units=metric&format=json",
+        "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=NOS.COOPS.TAC.WL&date=latest&datum=MHHW&station={{{payload}}}&time_zone=gmt&units=metric&format=json",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -1922,8 +1930,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 480,
-        "y": 220,
+        "x": 560,
+        "y": 280,
         "wires": [
             [
                 "97bc0b6454d897ef"
@@ -1961,8 +1969,8 @@
         "mapurl": "",
         "mapopt": "",
         "mapwms": false,
-        "x": 830,
-        "y": 220,
+        "x": 710,
+        "y": 280,
         "wires": []
     },
     {
@@ -1972,11 +1980,10 @@
         "name": "",
         "path": "/map",
         "events": "connect,disconnect,point,layer,bounds,files,draw,other",
-        "x": 600,
-        "y": 380,
+        "x": 390,
+        "y": 280,
         "wires": [
             [
-                "f68080956c80d8ae",
                 "ee7d8abf6d717704"
             ]
         ]
@@ -1993,8 +2000,221 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 820,
-        "y": 380,
+        "x": 670,
+        "y": 360,
         "wires": []
+    },
+    {
+        "id": "3e6cb67dffee43dc",
+        "type": "http request",
+        "z": "101718428de70120",
+        "name": "Get app devs",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://eu1.cloud.thethings.network/api/v3/applications/{{{payload}}}/devices",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 840,
+        "y": 480,
+        "wires": [
+            [
+                "14eced8c079d8c09",
+                "7554e0bbfc352912"
+            ]
+        ]
+    },
+    {
+        "id": "21a8fe668cdf4891",
+        "type": "inject",
+        "z": "101718428de70120",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[\t    \"floodnet-test\",\t    \"nyu-production\"\t]",
+        "payloadType": "jsonata",
+        "x": 390,
+        "y": 480,
+        "wires": [
+            [
+                "a5776f2bed3d2d5c"
+            ]
+        ]
+    },
+    {
+        "id": "14eced8c079d8c09",
+        "type": "debug",
+        "z": "101718428de70120",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1030,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "b55ed6954feb034d",
+        "type": "credentials",
+        "z": "101718428de70120",
+        "name": "TTI token store",
+        "props": [
+            {
+                "value": "tti_user",
+                "type": "msg"
+            },
+            {
+                "value": "headers.Authorization",
+                "type": "msg"
+            }
+        ],
+        "x": 660,
+        "y": 480,
+        "wires": [
+            [
+                "3e6cb67dffee43dc"
+            ]
+        ]
+    },
+    {
+        "id": "a5776f2bed3d2d5c",
+        "type": "split",
+        "z": "101718428de70120",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 510,
+        "y": 480,
+        "wires": [
+            [
+                "b55ed6954feb034d"
+            ]
+        ]
+    },
+    {
+        "id": "7554e0bbfc352912",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "var dev_array = [];\n\nfor (let i = 0; i < msg.payload.end_devices.length; i++) {\n  var dev_id = msg.payload.end_devices[i].ids.device_id;\n  if (dev_id.includes(\"fn-\")){\n    dev_array.push(dev_id);\n  }\n}\n\nmsg.dev_array = dev_array;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 990,
+        "y": 420,
+        "wires": [
+            [
+                "f816bd8c757d6de8"
+            ]
+        ]
+    },
+    {
+        "id": "f816bd8c757d6de8",
+        "type": "debug",
+        "z": "101718428de70120",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1140,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "2d3dafa759849701",
+        "type": "debug",
+        "z": "41b751a153893032",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 690,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "9ca3c022c6a0eb66",
+        "type": "exec",
+        "z": "41b751a153893032",
+        "command": "influx delete --bucket \"{{{payload}}}\" -o floodnet --start '1970-01-01T00:00:00Z' --stop '2025-12-31T23:59:00Z'",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Execute command",
+        "x": 400,
+        "y": 240,
+        "wires": [
+            [
+                "2d3dafa759849701"
+            ],
+            [
+                "2d3dafa759849701"
+            ],
+            [
+                "2d3dafa759849701"
+            ]
+        ]
+    },
+    {
+        "id": "662442ec9d407a17",
+        "type": "inject",
+        "z": "41b751a153893032",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "floodnet_lab",
+        "payloadType": "str",
+        "x": 150,
+        "y": 240,
+        "wires": [
+            [
+                "9ca3c022c6a0eb66"
+            ]
+        ]
     }
 ]
