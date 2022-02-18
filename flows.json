@@ -160,18 +160,20 @@
         "id": "ebb68a36bf8edca2",
         "type": "ui_base",
         "theme": {
-            "name": "theme-light",
+            "name": "theme-dark",
             "lightTheme": {
                 "default": "#0094CE",
                 "baseColor": "#0094CE",
                 "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
-                "edited": false
+                "edited": true,
+                "reset": false
             },
             "darkTheme": {
                 "default": "#097479",
                 "baseColor": "#097479",
                 "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
-                "edited": false
+                "edited": true,
+                "reset": false
             },
             "customTheme": {
                 "name": "Untitled Theme 1",
@@ -181,44 +183,44 @@
             },
             "themeState": {
                 "base-color": {
-                    "default": "#0094CE",
-                    "value": "#0094CE",
+                    "default": "#097479",
+                    "value": "#097479",
                     "edited": false
                 },
                 "page-titlebar-backgroundColor": {
-                    "value": "#0094CE",
+                    "value": "#097479",
                     "edited": false
                 },
                 "page-backgroundColor": {
-                    "value": "#fafafa",
-                    "edited": false
-                },
-                "page-sidebar-backgroundColor": {
-                    "value": "#ffffff",
-                    "edited": false
-                },
-                "group-textColor": {
-                    "value": "#1bbfff",
-                    "edited": false
-                },
-                "group-borderColor": {
-                    "value": "#ffffff",
-                    "edited": false
-                },
-                "group-backgroundColor": {
-                    "value": "#ffffff",
-                    "edited": false
-                },
-                "widget-textColor": {
                     "value": "#111111",
                     "edited": false
                 },
+                "page-sidebar-backgroundColor": {
+                    "value": "#333333",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#0eb8c0",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#555555",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#333333",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#eeeeee",
+                    "edited": false
+                },
                 "widget-backgroundColor": {
-                    "value": "#0094ce",
+                    "value": "#097479",
                     "edited": false
                 },
                 "widget-borderColor": {
-                    "value": "#ffffff",
+                    "value": "#333333",
                     "edited": false
                 },
                 "base-font": {
@@ -253,6 +255,57 @@
         }
     },
     {
+        "id": "f4b50fc6dae783b8",
+        "type": "ui_group",
+        "name": "Create sensor",
+        "tab": "b34078e6.e60df8",
+        "order": 2,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "803f2d085a7b80f8",
+        "type": "ui_group",
+        "name": "Deploy sensor",
+        "tab": "b34078e6.e60df8",
+        "order": 4,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "afaab3096b157a9b",
+        "type": "ui_group",
+        "name": "Quality control",
+        "tab": "b34078e6.e60df8",
+        "order": 3,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "86228.687a5dd88",
+        "type": "ui_group",
+        "name": "Default",
+        "tab": "e006699.f40dd98",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "e006699.f40dd98",
+        "type": "ui_tab",
+        "name": "Home",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
         "id": "d5ace342b009a2b0",
         "type": "mqtt in",
         "z": "b8f9c9a92652ae8e",
@@ -269,7 +322,8 @@
         "y": 60,
         "wires": [
             [
-                "1067cdc9ebf0532f"
+                "d4dd1fb1.22cae",
+                "8a9fcb28e33a0cc5"
             ]
         ]
     },
@@ -278,14 +332,14 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "TTN V3 JSON processor",
-        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi_dbm'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr_db'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep_s'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta_ms'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
+        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']),\n            f_cnt: uplink_info['f_cnt'],\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi_dbm'] = gw_object_sorted[gw_key]['rssi'];\n    fields['gw_' + gw_cnt + '_snr_db'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}else{\n    msg.app_type = dev_info['device_id'].slice(0, 2);\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep_s'] = sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta_ms'] = sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = fw_ver;\n\n\n}\n\nreturn { payload: \n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 710,
-        "y": 120,
+        "x": 410,
+        "y": 60,
         "wires": [
             [
                 "9426b45005b4832d"
@@ -312,27 +366,6 @@
         ]
     },
     {
-        "id": "e4643fc3dea28a2f",
-        "type": "mqtt in",
-        "z": "b8f9c9a92652ae8e",
-        "name": "FloodNet - floodnet_gw_rain_gauge",
-        "topic": "#",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "fb2a3684.cf4c38",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 140,
-        "y": 200,
-        "wires": [
-            [
-                "7b436745f96901d0"
-            ]
-        ]
-    },
-    {
         "id": "cd90496796909420",
         "type": "debug",
         "z": "b8f9c9a92652ae8e",
@@ -350,44 +383,6 @@
         "wires": []
     },
     {
-        "id": "1067cdc9ebf0532f",
-        "type": "function",
-        "z": "b8f9c9a92652ae8e",
-        "name": "Add 'flood_sensor' sensor type",
-        "func": "msg['app_type'] = 'flood_sensor';\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 410,
-        "y": 60,
-        "wires": [
-            [
-                "d4dd1fb1.22cae"
-            ]
-        ]
-    },
-    {
-        "id": "7b436745f96901d0",
-        "type": "function",
-        "z": "b8f9c9a92652ae8e",
-        "name": "Add 'gw_rain_gauge' sensor type",
-        "func": "msg['app_type'] = 'gw_rain_gauge';\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 440,
-        "y": 200,
-        "wires": [
-            [
-                "d4dd1fb1.22cae"
-            ]
-        ]
-    },
-    {
         "id": "9426b45005b4832d",
         "type": "switch",
         "z": "b8f9c9a92652ae8e",
@@ -397,17 +392,17 @@
         "rules": [
             {
                 "t": "eq",
-                "v": "flood_sensor",
+                "v": "fs",
                 "vt": "str"
             },
             {
                 "t": "eq",
-                "v": "tidal_sensor",
+                "v": "ts",
                 "vt": "str"
             },
             {
                 "t": "eq",
-                "v": "gw_rain_gauge",
+                "v": "rg",
                 "vt": "str"
             },
             {
@@ -419,8 +414,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 4,
-        "x": 130,
-        "y": 340,
+        "x": 90,
+        "y": 240,
         "wires": [
             [
                 "4f19e58b65fd28a1",
@@ -468,8 +463,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 440,
-        "y": 440,
+        "x": 470,
+        "y": 480,
         "wires": []
     },
     {
@@ -487,8 +482,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 250,
-        "y": 240,
+        "x": 350,
+        "y": 200,
         "wires": [
             [
                 "513fbc9cc32e5fc3"
@@ -507,7 +502,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-test",
         "x": 830,
         "y": 320,
         "wires": []
@@ -525,8 +520,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 870,
-        "y": 240,
+        "x": 550,
+        "y": 200,
         "wires": []
     },
     {
@@ -545,47 +540,7 @@
         "wires": [
             [
                 "59c384dba7c30e0d",
-                "ec19bf2e68d60fc4"
-            ]
-        ]
-    },
-    {
-        "id": "bc92935b41f87924",
-        "type": "mqtt in",
-        "z": "b8f9c9a92652ae8e",
-        "name": "FloodNet - floodnet_tidal_sensor",
-        "topic": "#",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "8f7859036b247ff4",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 130,
-        "y": 120,
-        "wires": [
-            [
-                "bedbdcfb2b4eac81"
-            ]
-        ]
-    },
-    {
-        "id": "bedbdcfb2b4eac81",
-        "type": "function",
-        "z": "b8f9c9a92652ae8e",
-        "name": "Add 'tidal_sensor' sensor type",
-        "func": "msg['app_type'] = 'tidal_sensor';\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 410,
-        "y": 120,
-        "wires": [
-            [
-                "d4dd1fb1.22cae"
+                "1c76cbe69a3d1260"
             ]
         ]
     },
@@ -609,7 +564,7 @@
         ]
     },
     {
-        "id": "ec19bf2e68d60fc4",
+        "id": "8a9fcb28e33a0cc5",
         "type": "debug",
         "z": "b8f9c9a92652ae8e",
         "name": "",
@@ -620,8 +575,24 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 860,
-        "y": 280,
+        "x": 350,
+        "y": 20,
+        "wires": []
+    },
+    {
+        "id": "1c76cbe69a3d1260",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 730,
+        "y": 460,
         "wires": []
     },
     {
@@ -820,7 +791,7 @@
         "type": "function",
         "z": "e3941d68335018ed",
         "name": "",
-        "func": "if (msg.statusCode == 404){\n    return undefined\n}\n\nvar gateway_id = msg.gateway_id;\nvar last_uplink_dt = Date.parse(msg.payload.last_uplink_received_at);\nvar uplink_cnt = parseInt(msg.payload.uplink_count);\nvar downlink_cnt = parseInt(msg.payload.downlink_count);\n\nvar status_object = msg.payload.last_status;\n\nvar lat;\nvar lng;\nvar altitude;\n\nif (status_object.antenna_locations){\n    lat = status_object.antenna_locations[0].latitude || undefined;\n    lng = status_object.antenna_locations[0].longitude || undefined;\n    altitude = status_object.antenna_locations[0].altitude || undefined;\n}\n\nvar id_addr = status_object.ip[0] || undefined;\n\nvar uplink_ok = status_object.metrics.rxok;\nvar uplink_recv = status_object.metrics.rxin;\nvar ack_recv = status_object.metrics.ackr;\nvar downlink_ok = status_object.metrics.txok;\nvar downlink_recv = status_object.metrics.txin;\n\nvar ts = Date.parse(status_object.time);\n\nvar fields = {\n            uplink_ok: uplink_ok || undefined,\n            uplink_recv: uplink_recv || undefined,\n            ack_recv: ack_recv || undefined,\n            downlink_ok: downlink_ok || undefined,\n            downlink_recv: downlink_recv || undefined,\n            last_uplink_dt: last_uplink_dt || undefined,\n            uplink_cnt: uplink_cnt || undefined,\n            downlink_cnt: downlink_cnt || undefined\n            \n        };\n        \nvar tags = {\n            gateway_id: gateway_id,\n            lat: lat,\n            lng: lng,\n            // TODO: add human readable name to GW creation process scripts\n            sensor_name: undefined\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'gateway',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "func": "if (msg.statusCode == 404){\n    return undefined\n}\n\nvar gateway_id = msg.gateway_id;\nvar last_uplink_dt = Date.parse(msg.payload.last_uplink_received_at);\nvar uplink_cnt = parseInt(msg.payload.uplink_count);\nvar downlink_cnt = parseInt(msg.payload.downlink_count);\n\nvar status_object = msg.payload.last_status;\n\nvar lat;\nvar lng;\nvar altitude;\n\nnode.warn(status_object);\nif (typeof status_object.antenna_locations !== 'undefined'){\n    lat = status_object.antenna_locations[0].latitude || undefined;\n    lng = status_object.antenna_locations[0].longitude || undefined;\n    altitude = status_object.antenna_locations[0].altitude || undefined;\n}\n\nvar ip_addr;\n\nif (typeof status_object.ip !== 'undefined'){\n    ip_addr = status_object.ip[0] || undefined;\n}\n\nvar uplink_ok = status_object.metrics.rxok;\nvar uplink_recv = status_object.metrics.rxin;\nvar ack_recv = status_object.metrics.ackr;\nvar downlink_ok = status_object.metrics.txok;\nvar downlink_recv = status_object.metrics.txin;\n\nvar ts = Date.parse(status_object.time);\n\nvar fields = {\n            uplink_ok: uplink_ok || undefined,\n            uplink_recv: uplink_recv || undefined,\n            ack_recv: ack_recv || undefined,\n            downlink_ok: downlink_ok || undefined,\n            downlink_recv: downlink_recv || undefined,\n            last_uplink_dt: last_uplink_dt || undefined,\n            uplink_cnt: uplink_cnt || undefined,\n            downlink_cnt: downlink_cnt || undefined\n            \n        };\n        \nvar tags = {\n            gateway_id: gateway_id,\n            lat: lat,\n            lng: lng,\n            ip_addr: ip_addr || undefined,\n            // TODO: add human readable name to GW creation process scripts\n            gateway_name: undefined\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'gateway',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -846,7 +817,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-test",
         "x": 300,
         "y": 220,
         "wires": []
@@ -1119,7 +1090,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-test",
         "x": 710,
         "y": 280,
         "wires": []
@@ -1193,7 +1164,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-test",
         "x": 700,
         "y": 40,
         "wires": []
@@ -1450,7 +1421,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-test",
         "x": 1010,
         "y": 640,
         "wires": []
@@ -1669,7 +1640,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-test",
         "x": 560,
         "y": 300,
         "wires": []
@@ -1775,7 +1746,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-test",
         "x": 740,
         "y": 560,
         "wires": []
@@ -1799,7 +1770,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "[\t   'floodnet_test',\t   'floodnet_lab',\t   'floodnet_live'\t]",
+        "payload": "[\t   'floodnet-test',\t   'floodnet-lab',\t   'floodnet-live'\t]",
         "payloadType": "jsonata",
         "x": 70,
         "y": 80,
@@ -1833,7 +1804,7 @@
         "type": "function",
         "z": "54e1edf44c387788",
         "name": "Create query",
-        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 5.0;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = 'cm-test-app';\nvar field_name = 'dist_mm';\n\nvar agg_str = 'median';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> keep(columns: [\"_value\", \"dev_id\"])\n  |> group(columns: [\"dev_id\"])\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"dev_id\"])\n|> rename(columns: {_value_median: \"${agg_str}\", _value_stddev: \"stddev\"})\n|> filter(fn: (r) =>\n    r.stddev < ${std_limit}\n  )\n`\nmsg.query = query;\n\nreturn msg;",
+        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 5.0;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = 'nyu-production';\nvar field_name = 'dist_mm';\n\nvar agg_str = 'mean';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> keep(columns: [\"_value\", \"dev_id\"])\n  |> group(columns: [\"dev_id\"])\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"dev_id\"])\n|> rename(columns: {_value_mean: \"${agg_str}\", _value_stddev: \"stddev\"})\n|> filter(fn: (r) =>\n    r.stddev < ${std_limit}\n  )\n`\nmsg.query = query;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1868,7 +1839,7 @@
         "type": "function",
         "z": "54e1edf44c387788",
         "name": "Create median insert",
-        "func": "var meas_array = [];\n\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    if (info.stddev < 5.0){\n        var global_var_name = info.dev_id + '.night_median';\n        global.set(global_var_name, info.median);\n        msg.median = info.median;\n        var influx_entry = {\n            measurement: 'flood-sensor',\n            fields: {\n                night_median_mm: info.median\n            },\n            tags:{\n                sensor_id: info.dev_id\n            },\n            timestamp: new Date().getTime()\n        };\n        meas_array.push(influx_entry);\n    }\n}\n\nmsg.payload = meas_array;\nreturn msg;",
+        "func": "var meas_array = [];\n\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    if (info.stddev < 5.0){\n        var global_var_name = info.dev_id + '.night_median';\n        global.set(global_var_name, info.mean);\n        msg.median = info.mean;\n        var influx_entry = {\n            measurement: 'flood-sensor',\n            fields: {\n                night_median_mm: info.mean\n            },\n            tags:{\n                sensor_id: info.dev_id\n            },\n            timestamp: new Date().getTime()\n        };\n        meas_array.push(influx_entry);\n    }\n}\n\nmsg.payload = meas_array;\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1895,7 +1866,7 @@
         "precisionV18FluxV20": "ms",
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
-        "bucket": "floodnet_test",
+        "bucket": "floodnet-lab",
         "x": 660,
         "y": 380,
         "wires": []
@@ -1930,8 +1901,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
-        "y": 280,
+        "x": 260,
+        "y": 120,
         "wires": [
             [
                 "97bc0b6454d897ef"
@@ -1942,7 +1913,7 @@
         "id": "97bc0b6454d897ef",
         "type": "ui_worldmap",
         "z": "101718428de70120",
-        "group": "cd81d08b.eebb3",
+        "group": "803f2d085a7b80f8",
         "order": 4,
         "width": 0,
         "height": 0,
@@ -1969,8 +1940,8 @@
         "mapurl": "",
         "mapopt": "",
         "mapwms": false,
-        "x": 710,
-        "y": 280,
+        "x": 410,
+        "y": 120,
         "wires": []
     },
     {
@@ -1980,29 +1951,13 @@
         "name": "",
         "path": "/map",
         "events": "connect,disconnect,point,layer,bounds,files,draw,other",
-        "x": 390,
-        "y": 280,
+        "x": 90,
+        "y": 120,
         "wires": [
             [
                 "ee7d8abf6d717704"
             ]
         ]
-    },
-    {
-        "id": "f68080956c80d8ae",
-        "type": "debug",
-        "z": "101718428de70120",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 670,
-        "y": 360,
-        "wires": []
     },
     {
         "id": "3e6cb67dffee43dc",
@@ -2018,59 +1973,13 @@
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 840,
-        "y": 480,
+        "x": 940,
+        "y": 640,
         "wires": [
             [
-                "14eced8c079d8c09",
                 "7554e0bbfc352912"
             ]
         ]
-    },
-    {
-        "id": "21a8fe668cdf4891",
-        "type": "inject",
-        "z": "101718428de70120",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "[\t    \"floodnet-test\",\t    \"nyu-production\"\t]",
-        "payloadType": "jsonata",
-        "x": 390,
-        "y": 480,
-        "wires": [
-            [
-                "a5776f2bed3d2d5c"
-            ]
-        ]
-    },
-    {
-        "id": "14eced8c079d8c09",
-        "type": "debug",
-        "z": "101718428de70120",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1030,
-        "y": 480,
-        "wires": []
     },
     {
         "id": "b55ed6954feb034d",
@@ -2087,8 +1996,8 @@
                 "type": "msg"
             }
         ],
-        "x": 660,
-        "y": 480,
+        "x": 760,
+        "y": 640,
         "wires": [
             [
                 "3e6cb67dffee43dc"
@@ -2106,11 +2015,11 @@
         "arraySpltType": "len",
         "stream": false,
         "addname": "",
-        "x": 510,
-        "y": 480,
+        "x": 450,
+        "y": 640,
         "wires": [
             [
-                "b55ed6954feb034d"
+                "da430a9b7a874f15"
             ]
         ]
     },
@@ -2119,22 +2028,1131 @@
         "type": "function",
         "z": "101718428de70120",
         "name": "",
-        "func": "var dev_array = [];\n\nfor (let i = 0; i < msg.payload.end_devices.length; i++) {\n  var dev_id = msg.payload.end_devices[i].ids.device_id;\n  if (dev_id.includes(\"fn-\")){\n    dev_array.push(dev_id);\n  }\n}\n\nmsg.dev_array = dev_array;\n\nreturn msg;",
+        "func": "if (msg.statusCode != 200){\n    msg.complete = 1;\n    msg.parts = [];\n    msg.payload = msg.parts;\n    return msg;\n}\n\nvar dev_array = [];\n\nfor (let i = 0; i < msg.payload.end_devices.length; i++) {\n  var dev_id = msg.payload.end_devices[i].ids.device_id;\n  if (dev_id.includes('fs-') || \n        dev_id.includes('rg-') ||\n        dev_id.includes('ts-') ||\n        dev_id.includes('fn-')\n        ){\n    dev_array.push(dev_id);\n  }\n}\n\nmsg.dev_array = dev_array;\nmsg.parts = dev_array;\nmsg.payload = msg.parts;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 990,
-        "y": 420,
+        "x": 140,
+        "y": 700,
         "wires": [
             [
-                "f816bd8c757d6de8"
+                "f0b60bd24b8d1ea9"
             ]
         ]
     },
     {
-        "id": "f816bd8c757d6de8",
+        "id": "a8e0c13e05e832d6",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "Sensor type",
+        "label": "Sensor type:",
+        "tooltip": "",
+        "place": "Sensor type",
+        "group": "f4b50fc6dae783b8",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "Flood sensor",
+                "value": "fs",
+                "type": "str"
+            },
+            {
+                "label": "Rain gauge",
+                "value": "rg",
+                "type": "str"
+            },
+            {
+                "label": "Tidal sensor",
+                "value": "ts",
+                "type": "str"
+            },
+            {
+                "label": "Old convention",
+                "value": "fn",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 670,
+        "y": 700,
+        "wires": [
+            [
+                "a4d8da4788898304"
+            ]
+        ]
+    },
+    {
+        "id": "a4d8da4788898304",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "var dev_array = flow.get(\"dev_array\");\nvar dev_type = msg.payload;\n\nconst filt_devs = dev_array.filter((dev) => {\n  return dev.includes(dev_type);\n}).sort();\n\nlet free_dev_array = [];\nlet free_count = 0;\nfor (let i = 1; i < 99999; i++) {\n  var s = i+\"\";\n  while (s.length < 5) s = \"0\" + s;\n  var target_dev_id = dev_type + '-' + s;\n  if (filt_devs.includes(target_dev_id)) continue;\n  free_dev_array.push(target_dev_id);\n  free_count += 1;\n  if (free_count > 100){\n      break;\n  }\n}\n\nmsg.options = free_dev_array;\nmsg.payload = free_dev_array[0];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 700,
+        "wires": [
+            [
+                "afeeb47286efbd0f"
+            ]
+        ]
+    },
+    {
+        "id": "513076c43ec8af13",
+        "type": "ui_ui_control",
+        "z": "101718428de70120",
+        "name": "On load",
+        "events": "connect",
+        "x": 140,
+        "y": 640,
+        "wires": [
+            [
+                "95d43463751127ad"
+            ]
+        ]
+    },
+    {
+        "id": "bd83d31ea5a6ab88",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set to fs",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "fs",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 520,
+        "y": 700,
+        "wires": [
+            [
+                "a8e0c13e05e832d6"
+            ]
+        ]
+    },
+    {
+        "id": "95d43463751127ad",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "app_names",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "[\t    \"floodnet-test\",\t    \"nyu-production\",\t    \"fnapp-10000\",\t    \"complete\"\t    \t]",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 310,
+        "y": 640,
+        "wires": [
+            [
+                "a5776f2bed3d2d5c"
+            ]
+        ]
+    },
+    {
+        "id": "f0b60bd24b8d1ea9",
+        "type": "join",
+        "z": "101718428de70120",
+        "name": "",
+        "mode": "custom",
+        "build": "array",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": false,
+        "timeout": "",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "num",
+        "reduceFixup": "",
+        "x": 270,
+        "y": 700,
+        "wires": [
+            [
+                "35b7b1db898fbdcd"
+            ]
+        ]
+    },
+    {
+        "id": "cf8c1e604a7e8a11",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "Network:",
+        "tooltip": "",
+        "place": "",
+        "group": "f4b50fc6dae783b8",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "The Things Network",
+                "value": "ttn",
+                "type": "str"
+            },
+            {
+                "label": "Helium",
+                "value": "helium",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 360,
+        "y": 240,
+        "wires": [
+            [
+                "e13c2b115ae6c405"
+            ]
+        ]
+    },
+    {
+        "id": "afeeb47286efbd0f",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "Sensor ID:",
+        "tooltip": "",
+        "place": "Select option",
+        "group": "f4b50fc6dae783b8",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "",
+                "value": "",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 970,
+        "y": 700,
+        "wires": [
+            [
+                "dc0d1cf9b769ae5c"
+            ]
+        ]
+    },
+    {
+        "id": "74087393325035f7",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "Sensor types:",
+        "tooltip": "",
+        "place": "",
+        "group": "f4b50fc6dae783b8",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": true,
+        "options": [
+            {
+                "label": "Range",
+                "value": "range",
+                "type": "str"
+            },
+            {
+                "label": "Temperature",
+                "value": "temp",
+                "type": "str"
+            },
+            {
+                "label": "Humidity",
+                "value": "humid",
+                "type": "str"
+            },
+            {
+                "label": "Precipitation",
+                "value": "precip",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 380,
+        "y": 300,
+        "wires": [
+            [
+                "39fc015814128640"
+            ]
+        ]
+    },
+    {
+        "id": "0c9700d67847344a",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "Built by:",
+        "tooltip": "",
+        "place": "",
+        "group": "f4b50fc6dae783b8",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "Praneeth",
+                "value": "psv",
+                "type": "str"
+            },
+            {
+                "label": "Ricardo",
+                "value": "rtc",
+                "type": "str"
+            },
+            {
+                "label": "Charlie",
+                "value": "cm",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 360,
+        "y": 360,
+        "wires": [
+            [
+                "07c0c2992678b86e"
+            ]
+        ]
+    },
+    {
+        "id": "3ab57096287dda8f",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "Design version:",
+        "tooltip": "",
+        "place": "",
+        "group": "f4b50fc6dae783b8",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "AB02 micro",
+                "value": "nyu_mk2",
+                "type": "str"
+            },
+            {
+                "label": "Feather",
+                "value": "nyu_mk1",
+                "type": "str"
+            },
+            {
+                "label": "Feather tubed",
+                "value": "cuny_mk1",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 380,
+        "y": 420,
+        "wires": [
+            [
+                "505a67c8f2179f38"
+            ]
+        ]
+    },
+    {
+        "id": "c90888da15b9b25a",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "Housing:",
+        "tooltip": "",
+        "place": "",
+        "group": "f4b50fc6dae783b8",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "Micro",
+                "value": "micro",
+                "type": "str"
+            },
+            {
+                "label": "Louvered",
+                "value": "louvered",
+                "type": "str"
+            },
+            {
+                "label": "QILIPSU junction box",
+                "value": "junc_box",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 360,
+        "y": 480,
+        "wires": [
+            [
+                "89ab5415ab2c45e1"
+            ]
+        ]
+    },
+    {
+        "id": "2d52a60e5029a81a",
+        "type": "ui_text_input",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "QC height 1:",
+        "tooltip": "",
+        "group": "afaab3096b157a9b",
+        "order": 7,
+        "width": "2",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 950,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4369f6169abacabd",
+        "type": "ui_text_input",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "QC height 2:",
+        "tooltip": "",
+        "group": "afaab3096b157a9b",
+        "order": 7,
+        "width": "2",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 950,
+        "y": 500,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "79ad882e8a6dcf97",
+        "type": "ui_text_input",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "QC height 3:",
+        "tooltip": "",
+        "group": "afaab3096b157a9b",
+        "order": 7,
+        "width": "2",
+        "height": "1",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 950,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3102c66145ad20e4",
+        "type": "ui_button",
+        "z": "101718428de70120",
+        "name": "",
+        "group": "f4b50fc6dae783b8",
+        "order": 7,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Create sensor",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 120,
+        "y": 200,
+        "wires": [
+            [
+                "2934c4cac4f2c17e"
+            ]
+        ]
+    },
+    {
+        "id": "0dbb9c7eef8cb3d4",
+        "type": "ui_dropdown",
+        "z": "101718428de70120",
+        "name": "",
+        "label": "Application:",
+        "tooltip": "",
+        "place": "",
+        "group": "f4b50fc6dae783b8",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "FloodNet Test",
+                "value": "floodnet-test",
+                "type": "str"
+            },
+            {
+                "label": "FloodNet Lab",
+                "value": "floodnet-lab",
+                "type": "str"
+            },
+            {
+                "label": "FloodNet Live",
+                "value": "floodnet-live",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 370,
+        "y": 540,
+        "wires": [
+            [
+                "a49e8c77b2264e56"
+            ]
+        ]
+    },
+    {
+        "id": "da430a9b7a874f15",
+        "type": "delay",
+        "z": "101718428de70120",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "3",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 590,
+        "y": 640,
+        "wires": [
+            [
+                "b55ed6954feb034d"
+            ]
+        ]
+    },
+    {
+        "id": "35b7b1db898fbdcd",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "func",
+        "func": "var merged = [].concat.apply([], msg.payload);\nmsg.dev_array = merged;\nflow.set('dev_array', msg.dev_array);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 700,
+        "wires": [
+            [
+                "bd83d31ea5a6ab88"
+            ]
+        ]
+    },
+    {
+        "id": "8972b54cf9c1ada4",
+        "type": "http request",
+        "z": "101718428de70120",
+        "name": "dev create",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://eu1.cloud.thethings.network/api/v3/applications/{{{app_id}}}/devices",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 610,
+        "y": 200,
+        "wires": [
+            [
+                "1aac4e4668e393a9"
+            ]
+        ]
+    },
+    {
+        "id": "2934c4cac4f2c17e",
+        "type": "credentials",
+        "z": "101718428de70120",
+        "name": "TTI token store",
+        "props": [
+            {
+                "value": "tti_user",
+                "type": "msg"
+            },
+            {
+                "value": "tti_token",
+                "type": "msg"
+            }
+        ],
+        "x": 300,
+        "y": 200,
+        "wires": [
+            [
+                "11d343eed6225d54"
+            ]
+        ]
+    },
+    {
+        "id": "11d343eed6225d54",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "\nlet dev_id = flow.get(\"dev_id\");\nlet dev_eui = \"\";\nlet join_eui = \"0000000000000000\";\nlet app_id = flow.get(\"app_name\");\nlet app_key = \"11E503886B0324692E34E0933A4313C7\";\n\nfor (let n=0, l=dev_id.length; n<l; n++) \n     {\n\t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n\t\tdev_eui += hex;\n\t }\n\t \nmsg.dev_id = dev_id;\nmsg.dev_eui = dev_eui;\nmsg.join_eui = join_eui;\nmsg.app_id = app_id;\nmsg.app_key = app_key;\n\nlet create_device = {\n   \"end_device\":{\n      \"name\": dev_id,\n      \"description\": dev_id,\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui\n      },\n      \"join_server_address\":\"nam1.cloud.thethings.network\",\n      \"network_server_address\":\"nam1.cloud.thethings.network\",\n      \"application_server_address\":\"nam1.cloud.thethings.network\",\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"join_server_address\",\n         \"network_server_address\",\n         \"application_server_address\"\n      ]\n   }\n}\n\nmsg.payload = create_device;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 200,
+        "wires": [
+            [
+                "8972b54cf9c1ada4"
+            ]
+        ]
+    },
+    {
+        "id": "dc0d1cf9b769ae5c",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "dev_id",
+                "pt": "flow",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1140,
+        "y": 700,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1aac4e4668e393a9",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "// let dev_id = flow.get(\"dev_id\");\n// let dev_eui = \"\";\n// let join_eui = \"0000000000000000\";\n// let app_id = \"floodnet-test\";\n\n// for (let n=0, l=dev_id.length; n<l; n++) \n//      {\n// \t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n// \t\tdev_eui += hex;\n// \t }\n\t \n// msg.dev_id = dev_id;\n// msg.dev_eui = dev_eui;\n// msg.join_eui = join_eui;\n// msg.app_id = app_id;\n\nlet dev_id = msg.dev_id;\nlet dev_eui = msg.dev_eui;\nlet join_eui = msg.join_eui;\nlet app_id = msg.app_id;\n\n\n\nlet register_name_server = {\n   \"end_device\":{\n      \"supports_join\": true,\n      \"supports_class_c\": true,\n    //   \"multicast\": true,\n      \"lorawan_version\": \"MAC_V1_0_3\",\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui,\n         \"application_ids\":{\n            \"application_id\": app_id\n         }\n      },\n      \"frequency_plan_id\":\"US_902_928_FSB_2\",\n      \"lorawan_phy_version\":\"PHY_V1_0_3_REV_A\",\n      \"mac_settings\":{\n         \"class_c_timeout\":\"60s\",\n         \"supports_32_bit_f_cnt\": true\n      },\n      \"version_ids\":{\n          \"band_id\":\"US_902_928\"\n      }\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"supports_join\",\n         \"supports_class_c\",\n        //  \"multicast\",\n         \"lorawan_version\",\n         \"ids.device_id\",\n         \"ids.dev_eui\",\n         \"ids.join_eui\",\n         \"ids.application_ids.application_id\",\n         \"frequency_plan_id\",\n         \"lorawan_phy_version\",\n         \"mac_settings.class_c_timeout\",\n         \"mac_settings.supports_32_bit_f_cnt\",\n         \"version_ids.band_id\"\n      ]\n   }\n}\n\nmsg.payload = register_name_server;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 200,
+        "wires": [
+            [
+                "5a1b49e415ee35dc"
+            ]
+        ]
+    },
+    {
+        "id": "5a1b49e415ee35dc",
+        "type": "http request",
+        "z": "101718428de70120",
+        "name": "name server",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://nam1.cloud.thethings.network/api/v3/ns/applications/{{{app_id}}}/devices",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 690,
+        "y": 260,
+        "wires": [
+            [
+                "c195ed1d211ff08d"
+            ]
+        ]
+    },
+    {
+        "id": "c195ed1d211ff08d",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "let dev_id = msg.dev_id;\nlet dev_eui = msg.dev_eui;\nlet join_eui = msg.join_eui;\nlet app_id = msg.app_id;\n\nlet register_application_server = {\n   \"end_device\":{\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui,\n         \"application_ids\":{\n            \"application_id\": app_id\n         }\n      },\n      \"version_ids\":{}\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"ids.device_id\",\n         \"ids.dev_eui\",\n         \"ids.join_eui\",\n         \"ids.application_ids.application_id\",\n         \"version_ids\"\n      ]\n   }\n}\n\nmsg.payload = register_application_server;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 840,
+        "y": 260,
+        "wires": [
+            [
+                "75b76071b07f2f23"
+            ]
+        ]
+    },
+    {
+        "id": "75b76071b07f2f23",
+        "type": "http request",
+        "z": "101718428de70120",
+        "name": "app server",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://nam1.cloud.thethings.network/api/v3/as/applications/{{{app_id}}}/devices",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 730,
+        "y": 320,
+        "wires": [
+            [
+                "cc48325095a80a21"
+            ]
+        ]
+    },
+    {
+        "id": "4d07ac4996dc1d74",
+        "type": "http request",
+        "z": "101718428de70120",
+        "name": "join server",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://nam1.cloud.thethings.network/api/v3/js/applications/{{{app_id}}}/devices",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 770,
+        "y": 380,
+        "wires": [
+            [
+                "bcfa2c297dc4e7cf"
+            ]
+        ]
+    },
+    {
+        "id": "cc48325095a80a21",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "let dev_id = msg.dev_id;\nlet dev_eui = msg.dev_eui;\nlet join_eui = msg.join_eui;\nlet app_id = msg.app_id;\nlet app_key = msg.app_key;\n\nlet register_join_server = {\n   \"end_device\":{\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui,\n         \"application_ids\":{\n            \"application_id\": app_id\n         }\n      },\n      \"network_server_address\":\"nam1.cloud.thethings.network\",\n      \"application_server_address\":\"nam1.cloud.thethings.network\",\n      \"root_keys\":{\n         \"app_key\":{\n            \"key\": app_key\n         }\n      }\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"ids.device_id\",\n         \"ids.dev_eui\",\n         \"ids.join_eui\",\n         \"ids.application_ids.application_id\",\n         \"network_server_address\",\n         \"application_server_address\",\n         \"root_keys.app_key.key\"\n      ]\n   }\n}\n\nmsg.payload = register_join_server;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 320,
+        "wires": [
+            [
+                "4d07ac4996dc1d74"
+            ]
+        ]
+    },
+    {
+        "id": "f62b460a0f72b0e5",
+        "type": "ui_toast",
+        "z": "101718428de70120",
+        "position": "top right",
+        "displayTime": "3",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "",
+        "name": "",
+        "x": 1090,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "bcfa2c297dc4e7cf",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "if (msg.statusCode == 200){\n    msg.payload = msg.dev_id + \" created successfully\"\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 380,
+        "wires": [
+            [
+                "f62b460a0f72b0e5",
+                "95d43463751127ad",
+                "a456ce6dc4aef168"
+            ]
+        ]
+    },
+    {
+        "id": "1b05ea7224dd9ca3",
+        "type": "ui_ui_control",
+        "z": "101718428de70120",
+        "name": "On load",
+        "events": "connect",
+        "x": 80,
+        "y": 240,
+        "wires": [
+            [
+                "acc9f8b02e7db096",
+                "bebdf6dcffd9bcaa",
+                "2ffd2efe70d8b162",
+                "6705821b83fd7f73",
+                "84e574eac8693c8f",
+                "67ee6098cf942a88"
+            ]
+        ]
+    },
+    {
+        "id": "acc9f8b02e7db096",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set def",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "ttn",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 230,
+        "y": 240,
+        "wires": [
+            [
+                "cf8c1e604a7e8a11"
+            ]
+        ]
+    },
+    {
+        "id": "bebdf6dcffd9bcaa",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set def",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "range",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 230,
+        "y": 300,
+        "wires": [
+            [
+                "74087393325035f7"
+            ]
+        ]
+    },
+    {
+        "id": "2ffd2efe70d8b162",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set def",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "psv",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 230,
+        "y": 360,
+        "wires": [
+            [
+                "0c9700d67847344a"
+            ]
+        ]
+    },
+    {
+        "id": "6705821b83fd7f73",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set def",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "nyu_mk2",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 230,
+        "y": 420,
+        "wires": [
+            [
+                "3ab57096287dda8f"
+            ]
+        ]
+    },
+    {
+        "id": "84e574eac8693c8f",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set def",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "micro",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 230,
+        "y": 480,
+        "wires": [
+            [
+                "c90888da15b9b25a"
+            ]
+        ]
+    },
+    {
+        "id": "67ee6098cf942a88",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set def",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "floodnet-test",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 230,
+        "y": 540,
+        "wires": [
+            [
+                "0dbb9c7eef8cb3d4"
+            ]
+        ]
+    },
+    {
+        "id": "31ce1c7723886059",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "flow.set(msg.var_name, msg.payload);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a456ce6dc4aef168",
+        "type": "switch",
+        "z": "101718428de70120",
+        "name": "",
+        "property": "statusCode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "200",
+                "vt": "num"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 1050,
+        "y": 340,
+        "wires": [
+            [
+                "0e9c0fb8036ca69c"
+            ]
+        ]
+    },
+    {
+        "id": "0e9c0fb8036ca69c",
+        "type": "function",
+        "z": "101718428de70120",
+        "name": "",
+        "func": "let meas_type = \"\";\n\nswitch (msg.dev_id.substring(0, 2)) {\n  case 'fs':\n    meas_type = \"flood-sensor\";\n    break;\n  case 'ts':\n    meas_type = \"tidal-sensor\";\n    break;\n  case 'rg':\n    meas_type = \"gateway-rain-gauge\";\n    break;\n}\n\nvar tags = {\n            dev_id: msg.dev_id,\n            dev_eui: msg.dev_eui,\n            network: flow.get(\"network\"),\n            sensor_types: flow.get(\"sensor_types\").join(),\n            built_by: flow.get(\"built_by\"),\n            design_ver: flow.get(\"design_ver\"),\n            housing: flow.get(\"housing\"),\n            app_name: flow.get(\"app_name\")\n        };\n\nvar fields = {\n            \"f_cnt\": 0\n        };\n\nmsg.bucket = flow.get(\"app_name\");\n\nmsg.payload = [\n    {\n        measurement: meas_type,\n        fields,\n        tags,\n        timestamp: Date.now()\n    }\n    ];\n    \nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1120,
+        "y": 300,
+        "wires": [
+            [
+                "4a4848eba73ecf9c"
+            ]
+        ]
+    },
+    {
+        "id": "4a4848eba73ecf9c",
+        "type": "influxdb batch",
+        "z": "101718428de70120",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "Sensor data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-test",
+        "x": 1150,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "41f6b530aacbbf06",
         "type": "debug",
         "z": "101718428de70120",
         "name": "",
@@ -2146,9 +3164,171 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1140,
-        "y": 420,
+        "x": 690,
+        "y": 580,
         "wires": []
+    },
+    {
+        "id": "e13c2b115ae6c405",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set var",
+        "rules": [
+            {
+                "t": "set",
+                "p": "var_name",
+                "pt": "msg",
+                "to": "network",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 490,
+        "y": 240,
+        "wires": [
+            [
+                "31ce1c7723886059"
+            ]
+        ]
+    },
+    {
+        "id": "39fc015814128640",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set var",
+        "rules": [
+            {
+                "t": "set",
+                "p": "var_name",
+                "pt": "msg",
+                "to": "sensor_types",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 530,
+        "y": 300,
+        "wires": [
+            [
+                "31ce1c7723886059"
+            ]
+        ]
+    },
+    {
+        "id": "07c0c2992678b86e",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set var",
+        "rules": [
+            {
+                "t": "set",
+                "p": "var_name",
+                "pt": "msg",
+                "to": "built_by",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 490,
+        "y": 360,
+        "wires": [
+            [
+                "31ce1c7723886059"
+            ]
+        ]
+    },
+    {
+        "id": "505a67c8f2179f38",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set var",
+        "rules": [
+            {
+                "t": "set",
+                "p": "var_name",
+                "pt": "msg",
+                "to": "design_ver",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 530,
+        "y": 420,
+        "wires": [
+            [
+                "31ce1c7723886059"
+            ]
+        ]
+    },
+    {
+        "id": "89ab5415ab2c45e1",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set var",
+        "rules": [
+            {
+                "t": "set",
+                "p": "var_name",
+                "pt": "msg",
+                "to": "housing",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 490,
+        "y": 480,
+        "wires": [
+            [
+                "31ce1c7723886059"
+            ]
+        ]
+    },
+    {
+        "id": "a49e8c77b2264e56",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "set var",
+        "rules": [
+            {
+                "t": "set",
+                "p": "var_name",
+                "pt": "msg",
+                "to": "app_name",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 540,
+        "wires": [
+            [
+                "31ce1c7723886059"
+            ]
+        ]
     },
     {
         "id": "2d3dafa759849701",
