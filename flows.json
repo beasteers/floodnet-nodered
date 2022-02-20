@@ -140,21 +140,14 @@
         "rejectUnauthorized": true
     },
     {
-        "id": "cd81d08b.eebb3",
-        "type": "ui_group",
-        "z": "101718428de70120",
-        "name": "Default",
-        "tab": "b34078e6.e60df8",
-        "order": 1,
-        "disp": true,
-        "width": "6"
-    },
-    {
         "id": "b34078e6.e60df8",
         "type": "ui_tab",
         "z": "101718428de70120",
-        "name": "Home",
-        "icon": "dashboard"
+        "name": "Create",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
     },
     {
         "id": "ebb68a36bf8edca2",
@@ -269,41 +262,12 @@
         "id": "803f2d085a7b80f8",
         "type": "ui_group",
         "name": "Deploy sensor",
-        "tab": "b34078e6.e60df8",
+        "tab": "4f7beffc6bad8cca",
         "order": 5,
         "disp": true,
         "width": "6",
         "collapse": false,
         "className": ""
-    },
-    {
-        "id": "afaab3096b157a9b",
-        "type": "ui_group",
-        "name": "Quality control",
-        "tab": "b34078e6.e60df8",
-        "order": 4,
-        "disp": true,
-        "width": "6",
-        "collapse": false,
-        "className": ""
-    },
-    {
-        "id": "86228.687a5dd88",
-        "type": "ui_group",
-        "name": "Default",
-        "tab": "e006699.f40dd98",
-        "order": 1,
-        "disp": true,
-        "width": "6",
-        "collapse": false
-    },
-    {
-        "id": "e006699.f40dd98",
-        "type": "ui_tab",
-        "name": "Home",
-        "icon": "dashboard",
-        "disabled": false,
-        "hidden": false
     },
     {
         "id": "a8ccca99870fd736",
@@ -317,23 +281,33 @@
         "className": ""
     },
     {
-        "id": "a6e358b.672ffa8",
-        "type": "ui_group",
-        "name": "Demo",
-        "tab": "4e528085.a1bfa",
-        "order": 1,
-        "disp": true,
-        "width": "20",
-        "collapse": false
-    },
-    {
-        "id": "4e528085.a1bfa",
+        "id": "b0e7be89053d38f6",
         "type": "ui_tab",
-        "name": "Demo",
+        "name": "Quality control",
         "icon": "dashboard",
         "order": 2,
         "disabled": false,
         "hidden": false
+    },
+    {
+        "id": "4f7beffc6bad8cca",
+        "type": "ui_tab",
+        "name": "Deploy",
+        "icon": "dashboard",
+        "order": 3,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "afaab3096b157a9b",
+        "type": "ui_group",
+        "name": "Quality control",
+        "tab": "b0e7be89053d38f6",
+        "order": 4,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
     },
     {
         "id": "d5ace342b009a2b0",
@@ -3369,7 +3343,7 @@
         "name": "",
         "label": "App key:",
         "format": "<font size = 2>{{msg.app_key_str}}",
-        "layout": "col-center",
+        "layout": "row-left",
         "className": "",
         "x": 1340,
         "y": 520,
@@ -3386,7 +3360,7 @@
         "name": "",
         "label": "Dev EUI:",
         "format": "<font size = 2>{{msg.dev_eui_str}}",
-        "layout": "col-center",
+        "layout": "row-left",
         "className": "",
         "x": 1340,
         "y": 440,
@@ -3403,7 +3377,7 @@
         "name": "",
         "label": "Join EUI:",
         "format": "<font size = 2>{{msg.join_eui_str}}",
-        "layout": "col-center",
+        "layout": "row-left",
         "className": "",
         "x": 1340,
         "y": 480,
@@ -3420,7 +3394,7 @@
         "name": "",
         "label": "Dev ID:",
         "format": "<font size = 3>{{msg.dev_id}}",
-        "layout": "col-center",
+        "layout": "row-left",
         "className": "",
         "x": 1340,
         "y": 400,
@@ -3544,111 +3518,6 @@
                 "3102c66145ad20e4"
             ]
         ]
-    },
-    {
-        "id": "ba99032b.af62f",
-        "type": "inject",
-        "z": "101718428de70120",
-        "name": "msg.name = \"+\"",
-        "props": [
-            {
-                "p": "name",
-                "v": "+",
-                "vt": "str"
-            },
-            {
-                "p": "txtColor",
-                "v": "white",
-                "vt": "str"
-            },
-            {
-                "p": "background",
-                "v": "#0797479",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 520,
-        "y": 900,
-        "wires": [
-            [
-                "5c8f7d68.5a528c"
-            ]
-        ]
-    },
-    {
-        "id": "3282929.03d0d6e",
-        "type": "inject",
-        "z": "101718428de70120",
-        "name": "msg.name = \"-\"",
-        "props": [
-            {
-                "p": "name",
-                "v": "-",
-                "vt": "str"
-            },
-            {
-                "p": "txtColor",
-                "v": "black",
-                "vt": "str"
-            },
-            {
-                "p": "background",
-                "v": "yellow",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 520,
-        "y": 940,
-        "wires": [
-            [
-                "5c8f7d68.5a528c"
-            ]
-        ]
-    },
-    {
-        "id": "5c8f7d68.5a528c",
-        "type": "ui_button",
-        "z": "101718428de70120",
-        "name": "",
-        "group": "a6e358b.672ffa8",
-        "order": 1,
-        "width": "2",
-        "height": "1",
-        "passthru": false,
-        "label": "{{name}}",
-        "tooltip": "",
-        "color": "{{txtColor}}",
-        "bgcolor": "{{background}}",
-        "icon": "",
-        "payload": "",
-        "payloadType": "str",
-        "topic": "topic",
-        "topicType": "msg",
-        "x": 750,
-        "y": 920,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "d560cdec.c5e45",
-        "type": "comment",
-        "z": "101718428de70120",
-        "name": "Flow to change button text, text color and background",
-        "info": "",
-        "x": 620,
-        "y": 840,
-        "wires": []
     },
     {
         "id": "2d3dafa759849701",
