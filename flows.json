@@ -270,7 +270,7 @@
         "type": "ui_group",
         "name": "Deploy sensor",
         "tab": "b34078e6.e60df8",
-        "order": 4,
+        "order": 5,
         "disp": true,
         "width": "6",
         "collapse": false,
@@ -281,7 +281,7 @@
         "type": "ui_group",
         "name": "Quality control",
         "tab": "b34078e6.e60df8",
-        "order": 3,
+        "order": 4,
         "disp": true,
         "width": "6",
         "collapse": false,
@@ -302,6 +302,36 @@
         "type": "ui_tab",
         "name": "Home",
         "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "a8ccca99870fd736",
+        "type": "ui_group",
+        "name": "New sensor keys",
+        "tab": "b34078e6.e60df8",
+        "order": 3,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "a6e358b.672ffa8",
+        "type": "ui_group",
+        "name": "Demo",
+        "tab": "4e528085.a1bfa",
+        "order": 1,
+        "disp": true,
+        "width": "20",
+        "collapse": false
+    },
+    {
+        "id": "4e528085.a1bfa",
+        "type": "ui_tab",
+        "name": "Demo",
+        "icon": "dashboard",
+        "order": 2,
         "disabled": false,
         "hidden": false
     },
@@ -1901,8 +1931,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 260,
-        "y": 120,
+        "x": 700,
+        "y": 100,
         "wires": [
             [
                 "97bc0b6454d897ef"
@@ -1940,8 +1970,8 @@
         "mapurl": "",
         "mapopt": "",
         "mapwms": false,
-        "x": 410,
-        "y": 120,
+        "x": 850,
+        "y": 100,
         "wires": []
     },
     {
@@ -1951,8 +1981,8 @@
         "name": "",
         "path": "/map",
         "events": "connect,disconnect,point,layer,bounds,files,draw,other",
-        "x": 90,
-        "y": 120,
+        "x": 530,
+        "y": 100,
         "wires": [
             [
                 "ee7d8abf6d717704"
@@ -2535,7 +2565,7 @@
         "width": 0,
         "height": 0,
         "passthru": false,
-        "label": "Create sensor",
+        "label": "Create sensor {{label}}",
         "tooltip": "",
         "color": "",
         "bgcolor": "",
@@ -2545,11 +2575,12 @@
         "payloadType": "str",
         "topic": "topic",
         "topicType": "msg",
-        "x": 120,
+        "x": 90,
         "y": 200,
         "wires": [
             [
-                "2934c4cac4f2c17e"
+                "2934c4cac4f2c17e",
+                "1084b78c0a9e815d"
             ]
         ]
     },
@@ -2604,7 +2635,7 @@
         "pauseType": "rate",
         "timeout": "3",
         "timeoutUnits": "seconds",
-        "rate": "1",
+        "rate": "3",
         "nbRateUnits": "1",
         "rateUnits": "second",
         "randomFirst": "1",
@@ -2690,7 +2721,7 @@
         "type": "function",
         "z": "101718428de70120",
         "name": "",
-        "func": "\nlet dev_id = flow.get(\"dev_id\");\nlet dev_eui = \"\";\nlet join_eui = \"0000000000000000\";\nlet app_id = flow.get(\"app_name\");\nlet app_key = \"11E503886B0324692E34E0933A4313C7\";\n\nfor (let n=0, l=dev_id.length; n<l; n++) \n     {\n\t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n\t\tdev_eui += hex;\n\t }\n\t \nmsg.dev_id = dev_id;\nmsg.dev_eui = dev_eui;\nmsg.join_eui = join_eui;\nmsg.app_id = app_id;\nmsg.app_key = app_key;\n\nlet create_device = {\n   \"end_device\":{\n      \"name\": dev_id,\n      \"description\": dev_id,\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui\n      },\n      \"join_server_address\":\"nam1.cloud.thethings.network\",\n      \"network_server_address\":\"nam1.cloud.thethings.network\",\n      \"application_server_address\":\"nam1.cloud.thethings.network\",\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"join_server_address\",\n         \"network_server_address\",\n         \"application_server_address\"\n      ]\n   }\n}\n\nmsg.payload = create_device;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "func": "\nlet dev_id = flow.get(\"dev_id\");\nlet dev_eui = \"\";\nlet join_eui = \"0000000000000000\";\nlet app_id = flow.get(\"app_name\");\n\n\nfor (let n=0, l=dev_id.length; n<l; n++) \n     {\n\t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n\t\tdev_eui += hex;\n\t }\n\t \nconst genRanHex = size => [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');\n\nlet app_key = genRanHex(32).toUpperCase();\n\nmsg.dev_id = dev_id;\nmsg.dev_eui = dev_eui;\nmsg.join_eui = join_eui;\nmsg.app_id = app_id;\nmsg.app_key = app_key;\n\nlet create_device = {\n   \"end_device\":{\n      \"name\": dev_id,\n      \"description\": dev_id,\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui\n      },\n      \"join_server_address\":\"nam1.cloud.thethings.network\",\n      \"network_server_address\":\"nam1.cloud.thethings.network\",\n      \"application_server_address\":\"nam1.cloud.thethings.network\",\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"join_server_address\",\n         \"network_server_address\",\n         \"application_server_address\"\n      ]\n   }\n}\n\nmsg.payload = create_device;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2726,7 +2757,9 @@
         "x": 1140,
         "y": 700,
         "wires": [
-            []
+            [
+                "eed505ce87c33466"
+            ]
         ]
     },
     {
@@ -2867,8 +2900,8 @@
         "className": "",
         "topic": "",
         "name": "",
-        "x": 1090,
-        "y": 380,
+        "x": 1350,
+        "y": 360,
         "wires": []
     },
     {
@@ -2876,7 +2909,7 @@
         "type": "function",
         "z": "101718428de70120",
         "name": "",
-        "func": "if (msg.statusCode == 200){\n    msg.payload = msg.dev_id + \" created successfully\"\n}\n\nreturn msg;",
+        "func": "if (msg.statusCode == 200){\n    msg.payload = msg.dev_id + \" created successfully\";\n}\n\n\nlet dev_eui = msg.dev_eui.match(/.{1,2}/g);\nlet dev_eui_str = \"\";\nfor (let n=0, l=dev_eui.length; n<l; n++) {\n\tdev_eui_str += \"0x\" + dev_eui[n] + \", \";\n}\nmsg.dev_eui_str = dev_eui_str.replace(/,\\s*$/, \"\");\n\nlet join_eui = msg.join_eui.match(/.{1,2}/g);\nlet join_eui_str = \"\";\nfor (let n=0, l=join_eui.length; n<l; n++) {\n\tjoin_eui_str += \"0x\" + join_eui[n] + \", \";\n}\nmsg.join_eui_str = join_eui_str.replace(/,\\s*$/, \"\");\n\n\nlet app_key = msg.app_key.match(/.{1,2}/g);\nlet app_key_str = \"\";\nfor (let n=0, l=app_key.length; n<l; n++) {\n\tapp_key_str += \"0x\" + app_key[n] + \", \";\n}\nmsg.app_key_str = app_key_str.replace(/,\\s*$/, \"\");\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2888,7 +2921,11 @@
             [
                 "f62b460a0f72b0e5",
                 "95d43463751127ad",
-                "a456ce6dc4aef168"
+                "a456ce6dc4aef168",
+                "08b296cf0165fe4e",
+                "d7bc2ad0178a8538",
+                "db17c8d1e844f1cd",
+                "b3cfbad6b41d273f"
             ]
         ]
     },
@@ -3077,14 +3114,14 @@
         "id": "31ce1c7723886059",
         "type": "function",
         "z": "101718428de70120",
-        "name": "",
+        "name": "Set flow vars",
         "func": "flow.set(msg.var_name, msg.payload);\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 780,
+        "x": 790,
         "y": 520,
         "wires": [
             []
@@ -3102,16 +3139,24 @@
                 "t": "eq",
                 "v": "200",
                 "vt": "num"
+            },
+            {
+                "t": "neq",
+                "v": "200",
+                "vt": "num"
             }
         ],
         "checkall": "true",
         "repair": false,
-        "outputs": 1,
+        "outputs": 2,
         "x": 1050,
         "y": 340,
         "wires": [
             [
                 "0e9c0fb8036ca69c"
+            ],
+            [
+                "a8538b7782c5fc8c"
             ]
         ]
     },
@@ -3147,25 +3192,8 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-test",
-        "x": 1150,
-        "y": 240,
-        "wires": []
-    },
-    {
-        "id": "41f6b530aacbbf06",
-        "type": "debug",
-        "z": "101718428de70120",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 690,
-        "y": 580,
+        "x": 1350,
+        "y": 220,
         "wires": []
     },
     {
@@ -3329,6 +3357,298 @@
                 "31ce1c7723886059"
             ]
         ]
+    },
+    {
+        "id": "08b296cf0165fe4e",
+        "type": "ui_text",
+        "z": "101718428de70120",
+        "group": "a8ccca99870fd736",
+        "order": 4,
+        "width": "6",
+        "height": "2",
+        "name": "",
+        "label": "App key:",
+        "format": "<font size = 2>{{msg.app_key_str}}",
+        "layout": "col-center",
+        "className": "",
+        "x": 1340,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "d7bc2ad0178a8538",
+        "type": "ui_text",
+        "z": "101718428de70120",
+        "group": "a8ccca99870fd736",
+        "order": 2,
+        "width": "6",
+        "height": "2",
+        "name": "",
+        "label": "Dev EUI:",
+        "format": "<font size = 2>{{msg.dev_eui_str}}",
+        "layout": "col-center",
+        "className": "",
+        "x": 1340,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "db17c8d1e844f1cd",
+        "type": "ui_text",
+        "z": "101718428de70120",
+        "group": "a8ccca99870fd736",
+        "order": 3,
+        "width": "6",
+        "height": "2",
+        "name": "",
+        "label": "Join EUI:",
+        "format": "<font size = 2>{{msg.join_eui_str}}",
+        "layout": "col-center",
+        "className": "",
+        "x": 1340,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "b3cfbad6b41d273f",
+        "type": "ui_text",
+        "z": "101718428de70120",
+        "group": "a8ccca99870fd736",
+        "order": 1,
+        "width": "6",
+        "height": "2",
+        "name": "",
+        "label": "Dev ID:",
+        "format": "<font size = 3>{{msg.dev_id}}",
+        "layout": "col-center",
+        "className": "",
+        "x": 1340,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "a8538b7782c5fc8c",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "dev_eui_str",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "join_eui_str",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "app_key_str",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "dev_id",
+                "pt": "msg",
+                "to": "Failed to create {{msg.dev_id}}",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1140,
+        "y": 540,
+        "wires": [
+            [
+                "b3cfbad6b41d273f",
+                "d7bc2ad0178a8538",
+                "db17c8d1e844f1cd",
+                "08b296cf0165fe4e"
+            ]
+        ]
+    },
+    {
+        "id": "1084b78c0a9e815d",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "enabled",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "label",
+                "pt": "msg",
+                "to": "- creating...",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 180,
+        "y": 120,
+        "wires": [
+            [
+                "3102c66145ad20e4"
+            ]
+        ]
+    },
+    {
+        "id": "eed505ce87c33466",
+        "type": "change",
+        "z": "101718428de70120",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "enabled",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "label",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1000,
+        "y": 140,
+        "wires": [
+            [
+                "3102c66145ad20e4"
+            ]
+        ]
+    },
+    {
+        "id": "ba99032b.af62f",
+        "type": "inject",
+        "z": "101718428de70120",
+        "name": "msg.name = \"+\"",
+        "props": [
+            {
+                "p": "name",
+                "v": "+",
+                "vt": "str"
+            },
+            {
+                "p": "txtColor",
+                "v": "white",
+                "vt": "str"
+            },
+            {
+                "p": "background",
+                "v": "#0797479",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 520,
+        "y": 900,
+        "wires": [
+            [
+                "5c8f7d68.5a528c"
+            ]
+        ]
+    },
+    {
+        "id": "3282929.03d0d6e",
+        "type": "inject",
+        "z": "101718428de70120",
+        "name": "msg.name = \"-\"",
+        "props": [
+            {
+                "p": "name",
+                "v": "-",
+                "vt": "str"
+            },
+            {
+                "p": "txtColor",
+                "v": "black",
+                "vt": "str"
+            },
+            {
+                "p": "background",
+                "v": "yellow",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 520,
+        "y": 940,
+        "wires": [
+            [
+                "5c8f7d68.5a528c"
+            ]
+        ]
+    },
+    {
+        "id": "5c8f7d68.5a528c",
+        "type": "ui_button",
+        "z": "101718428de70120",
+        "name": "",
+        "group": "a6e358b.672ffa8",
+        "order": 1,
+        "width": "2",
+        "height": "1",
+        "passthru": false,
+        "label": "{{name}}",
+        "tooltip": "",
+        "color": "{{txtColor}}",
+        "bgcolor": "{{background}}",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 750,
+        "y": 920,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d560cdec.c5e45",
+        "type": "comment",
+        "z": "101718428de70120",
+        "name": "Flow to change button text, text color and background",
+        "info": "",
+        "x": 620,
+        "y": 840,
+        "wires": []
     },
     {
         "id": "2d3dafa759849701",
