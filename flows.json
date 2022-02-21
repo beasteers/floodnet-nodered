@@ -41,7 +41,15 @@
     {
         "id": "101718428de70120",
         "type": "tab",
-        "label": "Sensor provisioning",
+        "label": "Sensor creation",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "767ee0c79d6fcca5",
+        "type": "tab",
+        "label": "Sensor deploy",
         "disabled": false,
         "info": "",
         "env": []
@@ -94,36 +102,6 @@
         "servername": "",
         "verifyservercert": true,
         "alpnprotocol": ""
-    },
-    {
-        "id": "fb2a3684.cf4c38",
-        "type": "mqtt-broker",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "broker": "nam1.cloud.thethings.network",
-        "port": "8883",
-        "tls": "4ad802e2463acc54",
-        "clientid": "",
-        "autoConnect": true,
-        "usetls": true,
-        "verifyservercert": true,
-        "protocolVersion": "4",
-        "keepalive": "60",
-        "cleansession": true,
-        "birthTopic": "",
-        "birthQos": "0",
-        "birthRetain": null,
-        "birthPayload": "",
-        "birthMsg": {},
-        "closeTopic": "",
-        "closePayload": "",
-        "closeMsg": {},
-        "willTopic": "",
-        "willQos": "0",
-        "willRetain": null,
-        "willPayload": "",
-        "willMsg": {},
-        "sessionExpiry": ""
     },
     {
         "id": "4b9a03aed4358412",
@@ -263,7 +241,7 @@
         "type": "ui_group",
         "name": "Deploy sensor",
         "tab": "4f7beffc6bad8cca",
-        "order": 5,
+        "order": 3,
         "disp": true,
         "width": "6",
         "collapse": false,
@@ -304,6 +282,28 @@
         "name": "Quality control",
         "tab": "b0e7be89053d38f6",
         "order": 4,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "15cc5b5e815472cf",
+        "type": "ui_group",
+        "name": "Rev geocode",
+        "tab": "4f7beffc6bad8cca",
+        "order": 2,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "a8bf5499468b4017",
+        "type": "ui_group",
+        "name": "Locate",
+        "tab": "4f7beffc6bad8cca",
+        "order": 1,
         "disp": true,
         "width": "6",
         "collapse": false,
@@ -1895,75 +1895,6 @@
         ]
     },
     {
-        "id": "ee7d8abf6d717704",
-        "type": "function",
-        "z": "101718428de70120",
-        "name": "",
-        "func": "if (msg.payload.action == \"connected\"){\n    msg.payload={\n        \"name\": \"Sensor\",\n        \"draggable\": true,\n        \"lat\": 40.692826, \n        \"lon\": -73.987309,\n        \"icon\": \"times\"\n    };\n}\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 700,
-        "y": 100,
-        "wires": [
-            [
-                "97bc0b6454d897ef"
-            ]
-        ]
-    },
-    {
-        "id": "97bc0b6454d897ef",
-        "type": "ui_worldmap",
-        "z": "101718428de70120",
-        "group": "803f2d085a7b80f8",
-        "order": 4,
-        "width": 0,
-        "height": 0,
-        "name": "",
-        "lat": "40.692826",
-        "lon": "-73.987309",
-        "zoom": "10",
-        "layer": "OSMG",
-        "cluster": "",
-        "maxage": "",
-        "usermenu": "hide",
-        "layers": "hide",
-        "panit": "true",
-        "panlock": "false",
-        "zoomlock": "false",
-        "hiderightclick": "true",
-        "coords": "deg",
-        "showgrid": "false",
-        "allowFileDrop": "false",
-        "path": "/map",
-        "overlist": "DR,CO,RA,DN,HM",
-        "maplist": "OSMG,OSMC,OSMH,EsriC,EsriS,EsriT,EsriO,EsriDG,NatGeo,UKOS,OS45,OS00,OpTop,SW",
-        "mapname": "",
-        "mapurl": "",
-        "mapopt": "",
-        "mapwms": false,
-        "x": 850,
-        "y": 100,
-        "wires": []
-    },
-    {
-        "id": "d995b13a825f23f8",
-        "type": "worldmap in",
-        "z": "101718428de70120",
-        "name": "",
-        "path": "/map",
-        "events": "connect,disconnect,point,layer,bounds,files,draw,other",
-        "x": 530,
-        "y": 100,
-        "wires": [
-            [
-                "ee7d8abf6d717704"
-            ]
-        ]
-    },
-    {
         "id": "3e6cb67dffee43dc",
         "type": "http request",
         "z": "101718428de70120",
@@ -2150,7 +2081,8 @@
         "y": 700,
         "wires": [
             [
-                "a8e0c13e05e832d6"
+                "a8e0c13e05e832d6",
+                "7eea9fd8404f4ea2"
             ]
         ]
     },
@@ -2631,7 +2563,7 @@
         "type": "function",
         "z": "101718428de70120",
         "name": "func",
-        "func": "var merged = [].concat.apply([], msg.payload);\nmsg.dev_array = merged;\nflow.set('dev_array', msg.dev_array);\nreturn msg;",
+        "func": "var merged = [].concat.apply([], msg.payload);\nmsg.dev_array = merged;\nflow.set('dev_array', msg.dev_array);\nmsg.app_name = flow.get(\"app_name\");\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -3518,6 +3450,1177 @@
                 "3102c66145ad20e4"
             ]
         ]
+    },
+    {
+        "id": "7eea9fd8404f4ea2",
+        "type": "link out",
+        "z": "101718428de70120",
+        "name": "Sensor list populate",
+        "mode": "link",
+        "links": [
+            "e051a6c96ff4fbc1",
+            "98541ff72be22b7c"
+        ],
+        "x": 705,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "8dcebf61b9f5f34f",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "if (msg.payload.action == \"connected\"){\n    msg.payload={\n        \"name\": \"Sensor\",\n        \"draggable\": true,\n        \"lat\": 40.692826, \n        \"lon\": -73.987309,\n        \"icon\": \"times\"\n    };\n} else if (msg.payload.action == \"move\"){\n    flow.set('lat', msg.payload.lat);\n    flow.set('lon', msg.payload.lon);\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 100,
+        "wires": [
+            [
+                "682ba9db7a18fead",
+                "f210f7a55b64d794"
+            ]
+        ]
+    },
+    {
+        "id": "682ba9db7a18fead",
+        "type": "ui_worldmap",
+        "z": "767ee0c79d6fcca5",
+        "group": "a8bf5499468b4017",
+        "order": 1,
+        "width": "6",
+        "height": "6",
+        "name": "",
+        "lat": "40.692826",
+        "lon": "-73.987309",
+        "zoom": "10",
+        "layer": "OSMG",
+        "cluster": "",
+        "maxage": "",
+        "usermenu": "hide",
+        "layers": "hide",
+        "panit": "true",
+        "panlock": "false",
+        "zoomlock": "false",
+        "hiderightclick": "true",
+        "coords": "deg",
+        "showgrid": "false",
+        "allowFileDrop": "false",
+        "path": "/map",
+        "overlist": "DR,CO,RA,DN,HM",
+        "maplist": "OSMG,OSMC,OSMH,EsriC,EsriS,EsriT,EsriO,EsriDG,NatGeo,UKOS,OS45,OS00,OpTop,SW",
+        "mapname": "",
+        "mapurl": "",
+        "mapopt": "",
+        "mapwms": false,
+        "x": 590,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "eedde358d540e432",
+        "type": "worldmap in",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "path": "/map",
+        "events": "connect,disconnect,point,layer,bounds,files,draw,other",
+        "x": 390,
+        "y": 40,
+        "wires": [
+            [
+                "8dcebf61b9f5f34f"
+            ]
+        ]
+    },
+    {
+        "id": "e051a6c96ff4fbc1",
+        "type": "link in",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "links": [
+            "7eea9fd8404f4ea2"
+        ],
+        "x": 75,
+        "y": 220,
+        "wires": [
+            [
+                "35cce625abaadce8"
+            ]
+        ]
+    },
+    {
+        "id": "4076dcc8436aa9f1",
+        "type": "ui_dropdown",
+        "z": "767ee0c79d6fcca5",
+        "name": "Sensor type",
+        "label": "Sensor type:",
+        "tooltip": "",
+        "place": "Sensor type",
+        "group": "803f2d085a7b80f8",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "Flood sensor",
+                "value": "fs",
+                "type": "str"
+            },
+            {
+                "label": "Rain gauge",
+                "value": "rg",
+                "type": "str"
+            },
+            {
+                "label": "Tidal sensor",
+                "value": "ts",
+                "type": "str"
+            },
+            {
+                "label": "Old convention",
+                "value": "fn",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 370,
+        "y": 220,
+        "wires": [
+            [
+                "749b3817a4bc2996"
+            ]
+        ]
+    },
+    {
+        "id": "749b3817a4bc2996",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "var dev_array = flow.get(\"dev_array\");\n\nvar dev_type = msg.payload;\n\nconst filt_devs = dev_array.filter((dev) => {\n  return dev.includes(dev_type);\n}).sort();\n\nmsg.options = filt_devs;\nmsg.payload = filt_devs[0];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 520,
+        "y": 220,
+        "wires": [
+            [
+                "16d6041297e73d16"
+            ]
+        ]
+    },
+    {
+        "id": "16d6041297e73d16",
+        "type": "ui_dropdown",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Sensor ID:",
+        "tooltip": "",
+        "place": "Select option",
+        "group": "803f2d085a7b80f8",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "",
+                "value": "",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 670,
+        "y": 220,
+        "wires": [
+            [
+                "f8294c4b45b1d46e"
+            ]
+        ]
+    },
+    {
+        "id": "35cce625abaadce8",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "flow.set('dev_array', msg.dev_array);\nflow.set('app_name', msg.app_name);\nmsg.payload = \"fs\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 180,
+        "y": 220,
+        "wires": [
+            [
+                "4076dcc8436aa9f1",
+                "97a20f37036a27e3",
+                "6cf2e5ec9357fbdf",
+                "181f5fd9c6c0624c",
+                "f7ef4c98b6a25b06"
+            ]
+        ]
+    },
+    {
+        "id": "e6a158a3f5a704e3",
+        "type": "ui_button",
+        "z": "767ee0c79d6fcca5",
+        "name": "Deploy button",
+        "group": "803f2d085a7b80f8",
+        "order": 7,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Deploy {{payload}}",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 920,
+        "y": 320,
+        "wires": [
+            [
+                "8c46d90e84cc9d2e"
+            ]
+        ]
+    },
+    {
+        "id": "103dd60e2d228ceb",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Deployment notes:",
+        "tooltip": "",
+        "group": "803f2d085a7b80f8",
+        "order": 5,
+        "width": "0",
+        "height": "0",
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 530,
+        "y": 440,
+        "wires": [
+            [
+                "8bbf23cd69bb9085"
+            ]
+        ]
+    },
+    {
+        "id": "5cc76664eb2e354a",
+        "type": "ui_date_picker",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Date deployed:",
+        "group": "803f2d085a7b80f8",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 520,
+        "y": 400,
+        "wires": [
+            [
+                "5b610bdee3c621d6"
+            ]
+        ]
+    },
+    {
+        "id": "d96313776cbc733c",
+        "type": "ui_dropdown",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Sensor mount:",
+        "tooltip": "",
+        "place": "Select option",
+        "group": "803f2d085a7b80f8",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "Drive rail",
+                "value": "drive_rail",
+                "type": "str"
+            },
+            {
+                "label": "Light pole",
+                "value": "light_pole",
+                "type": "str"
+            },
+            {
+                "label": "Utility pole",
+                "value": "utility_pole",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 520,
+        "y": 300,
+        "wires": [
+            [
+                "5c0bade66ca30c96"
+            ]
+        ]
+    },
+    {
+        "id": "7bf8e3b835ea7f08",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Community contact:",
+        "tooltip": "",
+        "group": "803f2d085a7b80f8",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "email",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 540,
+        "y": 360,
+        "wires": [
+            [
+                "dd138fc967f66dda"
+            ]
+        ]
+    },
+    {
+        "id": "97a20f37036a27e3",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "msg.payload = new Date();\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 400,
+        "wires": [
+            [
+                "5cc76664eb2e354a"
+            ]
+        ]
+    },
+    {
+        "id": "6cf2e5ec9357fbdf",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "msg.payload = \"drive_rail\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 300,
+        "wires": [
+            [
+                "d96313776cbc733c"
+            ]
+        ]
+    },
+    {
+        "id": "5832742686e44bc1",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Street number:",
+        "tooltip": "",
+        "group": "15cc5b5e815472cf",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 1660,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d65b61fb22a02ffc",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Neighborhood:",
+        "tooltip": "",
+        "group": "15cc5b5e815472cf",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 1660,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a1dc98bbd90a310a",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Borough:",
+        "tooltip": "",
+        "group": "15cc5b5e815472cf",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 1640,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "30e80340276d2dce",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Zipcode:",
+        "tooltip": "",
+        "group": "15cc5b5e815472cf",
+        "order": 5,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 1640,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "41621814db10d7fd",
+        "type": "ui_button",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "group": "a8bf5499468b4017",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Geocode",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 940,
+        "y": 100,
+        "wires": [
+            [
+                "081dafca34fef441",
+                "10d3d19c0e2e8680"
+            ]
+        ]
+    },
+    {
+        "id": "87a626e75ed5293a",
+        "type": "http request",
+        "z": "767ee0c79d6fcca5",
+        "name": "Rev geocode",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://maps.googleapis.com/maps/api/geocode/json?latlng={{lat}},{{lon}}&key={{gkey}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 1110,
+        "y": 260,
+        "wires": [
+            [
+                "742fd0ca758c426e"
+            ]
+        ]
+    },
+    {
+        "id": "081dafca34fef441",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "msg.lat = flow.get(\"lat\");\nmsg.lon = flow.get(\"lon\");\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1120,
+        "y": 140,
+        "wires": [
+            [
+                "9cb52c9249da41a4"
+            ]
+        ]
+    },
+    {
+        "id": "742fd0ca758c426e",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "let loc_results = msg.payload.results;\n\nfor (let n=0, l=loc_results.length; n<l; n++) {\n    let loc_el = loc_results[n];\n    \n    if (loc_el.types[0] == \"neighborhood\"){\n        msg.sensor_address_neighborhood = loc_el.address_components[0].short_name;\n        flow.set('sensor_address_neighborhood', msg.sensor_address_neighborhood);\n        break;\n    }\n}\n\nlet loc_parts = msg.payload.results[0].address_components;\n\nfor (let n=0, l=loc_parts.length; n<l; n++) {\n    if (loc_parts[n].types[0] == \"street_number\"){\n        msg.sensor_address_street_number = loc_parts[n].short_name;\n        flow.set('sensor_address_street_number', msg.sensor_address_street_number);\n    }\n    else if (loc_parts[n].types[0] == \"route\"){\n        msg.sensor_address_street = loc_parts[n].short_name;\n        flow.set('sensor_address_street', msg.sensor_address_street);\n    }\n    else if (loc_parts[n].types[2] == \"sublocality_level_1\"){\n        msg.sensor_address_borough = loc_parts[n].short_name;\n        flow.set('sensor_address_borough', msg.sensor_address_borough);\n    }\n    else if (loc_parts[n].types[0] == \"administrative_area_level_1\"){\n        msg.sensor_address_state = loc_parts[n].short_name;\n        flow.set('sensor_address_state', msg.sensor_address_state);\n    }\n    else if (loc_parts[n].types[0] == \"postal_code\"){\n        msg.sensor_address_zip = loc_parts[n].short_name;\n        flow.set('sensor_address_zip', msg.sensor_address_zip);\n    }\n\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1140,
+        "y": 320,
+        "wires": [
+            [
+                "6320e19d1a4a80ed",
+                "6dbd79d3a8683524",
+                "1265cbc62dcb5dd1",
+                "d449809f531ab9c0",
+                "15f3d7370b8a7cd7",
+                "5f0d0bf418bd129a"
+            ]
+        ]
+    },
+    {
+        "id": "9cb52c9249da41a4",
+        "type": "credentials",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "props": [
+            {
+                "value": "gkey",
+                "type": "msg"
+            }
+        ],
+        "x": 1110,
+        "y": 200,
+        "wires": [
+            [
+                "87a626e75ed5293a"
+            ]
+        ]
+    },
+    {
+        "id": "c7ef3659c981d265",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Street name:",
+        "tooltip": "",
+        "group": "15cc5b5e815472cf",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 1650,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7353b0e4a46b4f0f",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "State:",
+        "tooltip": "",
+        "group": "15cc5b5e815472cf",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 1630,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6320e19d1a4a80ed",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Set payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "sensor_address_street_number",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1350,
+        "y": 180,
+        "wires": [
+            [
+                "5832742686e44bc1"
+            ]
+        ]
+    },
+    {
+        "id": "6dbd79d3a8683524",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Set payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "sensor_address_street",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1350,
+        "y": 220,
+        "wires": [
+            [
+                "c7ef3659c981d265"
+            ]
+        ]
+    },
+    {
+        "id": "1265cbc62dcb5dd1",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Set payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "sensor_address_neighborhood",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1350,
+        "y": 260,
+        "wires": [
+            [
+                "d65b61fb22a02ffc"
+            ]
+        ]
+    },
+    {
+        "id": "d449809f531ab9c0",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Set payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "sensor_address_borough",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1350,
+        "y": 300,
+        "wires": [
+            [
+                "a1dc98bbd90a310a"
+            ]
+        ]
+    },
+    {
+        "id": "15f3d7370b8a7cd7",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Set payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "sensor_address_zip",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1350,
+        "y": 340,
+        "wires": [
+            [
+                "30e80340276d2dce"
+            ]
+        ]
+    },
+    {
+        "id": "5f0d0bf418bd129a",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Set payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "sensor_address_state",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1350,
+        "y": 380,
+        "wires": [
+            [
+                "7353b0e4a46b4f0f"
+            ]
+        ]
+    },
+    {
+        "id": "10d3d19c0e2e8680",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1330,
+        "y": 120,
+        "wires": [
+            [
+                "5832742686e44bc1",
+                "c7ef3659c981d265",
+                "d65b61fb22a02ffc",
+                "a1dc98bbd90a310a",
+                "30e80340276d2dce",
+                "7353b0e4a46b4f0f"
+            ]
+        ]
+    },
+    {
+        "id": "181f5fd9c6c0624c",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Clear text",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 360,
+        "y": 440,
+        "wires": [
+            [
+                "103dd60e2d228ceb"
+            ]
+        ]
+    },
+    {
+        "id": "f7ef4c98b6a25b06",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Clear text",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 360,
+        "y": 360,
+        "wires": [
+            [
+                "7bf8e3b835ea7f08"
+            ]
+        ]
+    },
+    {
+        "id": "98541ff72be22b7c",
+        "type": "link in",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "links": [
+            "7eea9fd8404f4ea2"
+        ],
+        "x": 1005,
+        "y": 20,
+        "wires": [
+            [
+                "10d3d19c0e2e8680"
+            ]
+        ]
+    },
+    {
+        "id": "f210f7a55b64d794",
+        "type": "switch",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "property": "payload.action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "move",
+                "vt": "str"
+            },
+            {
+                "t": "cont",
+                "v": "connect",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 630,
+        "y": 100,
+        "wires": [
+            [
+                "af1904f96b825f32"
+            ],
+            [
+                "738247b9662c513a"
+            ]
+        ]
+    },
+    {
+        "id": "738247b9662c513a",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "disable",
+        "rules": [
+            {
+                "t": "set",
+                "p": "enabled",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "dev_id",
+                "tot": "flow"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 740,
+        "y": 160,
+        "wires": [
+            [
+                "41621814db10d7fd",
+                "e6a158a3f5a704e3"
+            ]
+        ]
+    },
+    {
+        "id": "af1904f96b825f32",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "enable",
+        "rules": [
+            {
+                "t": "set",
+                "p": "enabled",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "dev_id",
+                "tot": "flow"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 730,
+        "y": 40,
+        "wires": [
+            [
+                "41621814db10d7fd",
+                "e6a158a3f5a704e3"
+            ]
+        ]
+    },
+    {
+        "id": "8c46d90e84cc9d2e",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "let meas_type = \"\";\nlet dev_id = flow.get(\"dev_id\");\nlet lat = flow.get(\"lat\");\nlet lon = flow.get(\"lon\");\n\nswitch (dev_id.substring(0, 2)) {\n  case 'fs':\n    meas_type = \"flood-sensor\";\n    break;\n  case 'ts':\n    meas_type = \"tidal-sensor\";\n    break;\n  case 'rg':\n    meas_type = \"gateway-rain-gauge\";\n    break;\n}\n\nvar tags = {\n            dev_id: dev_id,\n            lat: lat,\n            lon: lon,\n            sensor_address_street_number: flow.get('sensor_address_street_number'),\n            sensor_address_street: flow.get('sensor_address_street'),\n            sensor_address_neighborhood: flow.get('sensor_address_neighborhood'),\n            sensor_address_borough: flow.get('sensor_address_borough'),\n            sensor_address_state: flow.get('sensor_address_state'),\n            sensor_address_zip: flow.get('sensor_address_zip'),\n            date_deployed: flow.get('date_deployed'),\n            sensor_mount: flow.get('sensor_mount'),\n            community_name: flow.get('community_name'),\n            visit_note: flow.get('visit_note')\n        };\n\nvar fields = {\n            \"f_cnt\": 0\n        };\n\nmsg.bucket = flow.get(\"app_name\");\n\nmsg.payload = [\n    {\n        measurement: meas_type,\n        fields,\n        tags,\n        timestamp: Date.now()\n    }\n    ];\n    \nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 400,
+        "wires": [
+            [
+                "fa826cb74f47e2d3",
+                "acb8d44b88d09024"
+            ]
+        ]
+    },
+    {
+        "id": "f8294c4b45b1d46e",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "flow.set('dev_id', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 900,
+        "y": 220,
+        "wires": [
+            [
+                "e6a158a3f5a704e3"
+            ]
+        ]
+    },
+    {
+        "id": "5b610bdee3c621d6",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "flow.set('date_deployed', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8bbf23cd69bb9085",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "flow.set('visit_note', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "dd138fc967f66dda",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "flow.set('community_name', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 360,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5c0bade66ca30c96",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "flow.set('sensor_mount', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fa826cb74f47e2d3",
+        "type": "influxdb batch",
+        "z": "767ee0c79d6fcca5",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "Sensor data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-test",
+        "x": 1330,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "acb8d44b88d09024",
+        "type": "debug",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1230,
+        "y": 500,
+        "wires": []
     },
     {
         "id": "2d3dafa759849701",
