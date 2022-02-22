@@ -707,5 +707,43 @@
                 "file": "/data/node_modules/node-red-contrib-web-worldmap/worldmap.js"
             }
         }
+    },
+    "node-red-contrib-npm": {
+        "name": "node-red-contrib-npm",
+        "version": "1.0.2",
+        "local": true,
+        "user": true,
+        "nodes": {
+            "npm": {
+                "name": "npm",
+                "types": [
+                    "npm"
+                ],
+                "enabled": true,
+                "local": true,
+                "user": false,
+                "module": "node-red-contrib-npm",
+                "file": "/data/node_modules/node-red-contrib-npm/npm/npm.js"
+            }
+        }
+    },
+    "node-red-contrib-function-npm": {
+        "name": "node-red-contrib-function-npm",
+        "version": "0.4.0",
+        "local": true,
+        "user": true,
+        "nodes": {
+            "function-npm": {
+                "name": "function-npm",
+                "types": [
+                    "function-npm"
+                ],
+                "enabled": true,
+                "local": true,
+                "user": false,
+                "module": "node-red-contrib-function-npm",
+                "file": "/data/node_modules/node-red-contrib-function-npm/function-npm/function-npm.js"
+            }
+        }
     }
 }

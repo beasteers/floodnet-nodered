@@ -55,6 +55,14 @@
         "env": []
     },
     {
+        "id": "e63e21ac547645de",
+        "type": "tab",
+        "label": "Sensor manage",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "41b751a153893032",
         "type": "tab",
         "label": "Dev",
@@ -310,6 +318,25 @@
         "className": ""
     },
     {
+        "id": "b0207c7b4d5ca6a1",
+        "type": "ui_group",
+        "name": "Manage",
+        "tab": "5cbcc75ca3ef874c",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "5cbcc75ca3ef874c",
+        "type": "ui_tab",
+        "name": "Manage",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
         "id": "d5ace342b009a2b0",
         "type": "mqtt in",
         "z": "b8f9c9a92652ae8e",
@@ -326,8 +353,7 @@
         "y": 60,
         "wires": [
             [
-                "d4dd1fb1.22cae",
-                "8a9fcb28e33a0cc5"
+                "d4dd1fb1.22cae"
             ]
         ]
     },
@@ -368,23 +394,6 @@
                 "5bb5b33dc3b86e38"
             ]
         ]
-    },
-    {
-        "id": "cd90496796909420",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "Rain guage out",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 860,
-        "y": 380,
-        "wires": []
     },
     {
         "id": "9426b45005b4832d",
@@ -543,8 +552,7 @@
         "y": 260,
         "wires": [
             [
-                "59c384dba7c30e0d",
-                "1c76cbe69a3d1260"
+                "59c384dba7c30e0d"
             ]
         ]
     },
@@ -566,38 +574,6 @@
                 "59c384dba7c30e0d"
             ]
         ]
-    },
-    {
-        "id": "8a9fcb28e33a0cc5",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 350,
-        "y": 20,
-        "wires": []
-    },
-    {
-        "id": "1c76cbe69a3d1260",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 730,
-        "y": 460,
-        "wires": []
     },
     {
         "id": "a333bbcff1929612",
@@ -3459,10 +3435,11 @@
         "mode": "link",
         "links": [
             "e051a6c96ff4fbc1",
-            "98541ff72be22b7c"
+            "98541ff72be22b7c",
+            "bf6b8afed0865c0d"
         ],
-        "x": 705,
-        "y": 860,
+        "x": 645,
+        "y": 820,
         "wires": []
     },
     {
@@ -3670,7 +3647,8 @@
                 "97a20f37036a27e3",
                 "6cf2e5ec9357fbdf",
                 "181f5fd9c6c0624c",
-                "f7ef4c98b6a25b06"
+                "f7ef4c98b6a25b06",
+                "34ad60785a1988c5"
             ]
         ]
     },
@@ -3798,7 +3776,7 @@
         "type": "ui_text_input",
         "z": "767ee0c79d6fcca5",
         "name": "",
-        "label": "Community contact:",
+        "label": "Community contact email:",
         "tooltip": "",
         "group": "803f2d085a7b80f8",
         "order": 6,
@@ -3811,8 +3789,8 @@
         "sendOnBlur": true,
         "className": "",
         "topicType": "msg",
-        "x": 540,
-        "y": 360,
+        "x": 560,
+        "y": 480,
         "wires": [
             [
                 "dd138fc967f66dda"
@@ -4355,7 +4333,7 @@
         "to": "",
         "reg": false,
         "x": 360,
-        "y": 360,
+        "y": 480,
         "wires": [
             [
                 "7bf8e3b835ea7f08"
@@ -4486,7 +4464,7 @@
         "type": "function",
         "z": "767ee0c79d6fcca5",
         "name": "",
-        "func": "let meas_type = \"\";\nlet dev_id = flow.get(\"dev_id\");\nlet lat = flow.get(\"lat\");\nlet lon = flow.get(\"lon\");\n\nswitch (dev_id.substring(0, 2)) {\n  case 'fs':\n    meas_type = \"flood-sensor\";\n    break;\n  case 'ts':\n    meas_type = \"tidal-sensor\";\n    break;\n  case 'rg':\n    meas_type = \"gateway-rain-gauge\";\n    break;\n}\n\nvar tags = {\n            dev_id: dev_id,\n            lat: lat,\n            lon: lon,\n            sensor_address_street_number: flow.get('sensor_address_street_number'),\n            sensor_address_street: flow.get('sensor_address_street'),\n            sensor_address_neighborhood: flow.get('sensor_address_neighborhood'),\n            sensor_address_borough: flow.get('sensor_address_borough'),\n            sensor_address_state: flow.get('sensor_address_state'),\n            sensor_address_zip: flow.get('sensor_address_zip'),\n            date_deployed: flow.get('date_deployed'),\n            sensor_mount: flow.get('sensor_mount'),\n            community_name: flow.get('community_name'),\n            visit_note: flow.get('visit_note')\n        };\n\nvar fields = {\n            \"f_cnt\": 0\n        };\n\nmsg.bucket = flow.get(\"app_name\");\n\nmsg.payload = [\n    {\n        measurement: meas_type,\n        fields,\n        tags,\n        timestamp: Date.now()\n    }\n    ];\n    \nreturn msg;",
+        "func": "let meas_type = \"\";\nlet dev_id = flow.get(\"dev_id\");\nlet lat = flow.get(\"lat\");\nlet lon = flow.get(\"lon\");\n\nswitch (dev_id.substring(0, 2)) {\n  case 'fs':\n    meas_type = \"flood-sensor\";\n    break;\n  case 'ts':\n    meas_type = \"tidal-sensor\";\n    break;\n  case 'rg':\n    meas_type = \"gateway-rain-gauge\";\n    break;\n}\n\nvar tags = {\n            dev_id: dev_id,\n            lat: lat,\n            lon: lon,\n            sensor_address_street_number: flow.get('sensor_address_street_number'),\n            sensor_address_street: flow.get('sensor_address_street'),\n            sensor_address_neighborhood: flow.get('sensor_address_neighborhood'),\n            sensor_address_borough: flow.get('sensor_address_borough'),\n            sensor_address_state: flow.get('sensor_address_state'),\n            sensor_address_zip: flow.get('sensor_address_zip'),\n            date_deployed: flow.get('date_deployed'),\n            sensor_mount: flow.get('sensor_mount'),\n            community_name: flow.get('community_name'),\n            visit_note: flow.get('visit_note'),\n            deployment_id: flow.get('deployment_id')\n        };\n\nvar fields = {\n            \"f_cnt\": 0\n        };\n\nmsg.bucket = flow.get(\"app_name\");\n\nmsg.payload = [\n    {\n        measurement: meas_type,\n        fields,\n        tags,\n        timestamp: Date.now()\n    }\n    ];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -4565,8 +4543,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 720,
-        "y": 360,
+        "x": 760,
+        "y": 480,
         "wires": [
             []
         ]
@@ -4623,6 +4601,622 @@
         "wires": []
     },
     {
+        "id": "e7ddf6ce3a3fe8be",
+        "type": "function-npm",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "const { uniqueNamesGenerator, adjectives, colors, animals } = require('unique-names-generator');\nconst randomName = uniqueNamesGenerator({ dictionaries: [adjectives, colors, animals] });\nmsg.payload = randomName;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 520,
+        "y": 520,
+        "wires": [
+            [
+                "fb8b3d7ad558aea9"
+            ]
+        ]
+    },
+    {
+        "id": "34ad60785a1988c5",
+        "type": "change",
+        "z": "767ee0c79d6fcca5",
+        "name": "Clear text",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "enabled",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 360,
+        "y": 520,
+        "wires": [
+            [
+                "e7ddf6ce3a3fe8be"
+            ]
+        ]
+    },
+    {
+        "id": "fb8b3d7ad558aea9",
+        "type": "ui_text_input",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "label": "Deployment ID:",
+        "tooltip": "",
+        "group": "803f2d085a7b80f8",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "mode": "text",
+        "delay": 300,
+        "topic": "topic",
+        "sendOnBlur": true,
+        "className": "",
+        "topicType": "msg",
+        "x": 700,
+        "y": 520,
+        "wires": [
+            [
+                "5a8b7b032ecaaef7"
+            ]
+        ]
+    },
+    {
+        "id": "5a8b7b032ecaaef7",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "flow.set('deployment_id', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "dc6e7792e2fd268f",
+        "type": "comment",
+        "z": "767ee0c79d6fcca5",
+        "name": "Add app change code here before influx insert",
+        "info": "",
+        "x": 1110,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "bf6b8afed0865c0d",
+        "type": "link in",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "links": [
+            "7eea9fd8404f4ea2"
+        ],
+        "x": 125,
+        "y": 40,
+        "wires": [
+            [
+                "b815601c14e2bded"
+            ]
+        ]
+    },
+    {
+        "id": "b815601c14e2bded",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "flow.set('dev_array', msg.dev_array);\nflow.set('app_id', msg.app_name);\nmsg.app_id = msg.app_name;\nmsg.payload = \"fs\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 230,
+        "y": 40,
+        "wires": [
+            [
+                "1fe7b77cee96508a"
+            ]
+        ]
+    },
+    {
+        "id": "1fe7b77cee96508a",
+        "type": "ui_dropdown",
+        "z": "e63e21ac547645de",
+        "name": "Sensor type",
+        "label": "Sensor type:",
+        "tooltip": "",
+        "place": "Sensor type",
+        "group": "b0207c7b4d5ca6a1",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": false,
+        "options": [
+            {
+                "label": "Flood sensor",
+                "value": "fs",
+                "type": "str"
+            },
+            {
+                "label": "Rain gauge",
+                "value": "rg",
+                "type": "str"
+            },
+            {
+                "label": "Tidal sensor",
+                "value": "ts",
+                "type": "str"
+            },
+            {
+                "label": "Old convention",
+                "value": "fn",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 420,
+        "y": 40,
+        "wires": [
+            [
+                "aef31ddcf80e729c"
+            ]
+        ]
+    },
+    {
+        "id": "aef31ddcf80e729c",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "var dev_array = flow.get(\"dev_array\");\n\nvar dev_type = msg.payload;\n\nconst filt_devs = dev_array.filter((dev) => {\n  return dev.includes(dev_type);\n}).sort();\n\nmsg.options = filt_devs;\nmsg.payload = filt_devs[0];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 40,
+        "wires": [
+            [
+                "2533fb071d2857c4"
+            ]
+        ]
+    },
+    {
+        "id": "2533fb071d2857c4",
+        "type": "ui_dropdown",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "label": "Sensor ID:",
+        "tooltip": "",
+        "place": "Select option",
+        "group": "b0207c7b4d5ca6a1",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "multiple": true,
+        "options": [
+            {
+                "label": "",
+                "value": "",
+                "type": "str"
+            }
+        ],
+        "payload": "",
+        "topic": "topic",
+        "topicType": "msg",
+        "className": "",
+        "x": 720,
+        "y": 40,
+        "wires": [
+            [
+                "67bdc6efbb6b1c3d"
+            ]
+        ]
+    },
+    {
+        "id": "854cb3bda7fca56a",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "let dev_id = msg.dev_id;\nlet dev_eui = msg.dev_eui;\nlet join_eui = msg.join_eui;\nlet app_id = msg.app_id;\n\nlet create_device = {\n   \"end_device\":{\n      \"name\": dev_id,\n      \"description\": dev_id,\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui\n      },\n      \"join_server_address\":\"nam1.cloud.thethings.network\",\n      \"network_server_address\":\"nam1.cloud.thethings.network\",\n      \"application_server_address\":\"nam1.cloud.thethings.network\",\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"join_server_address\",\n         \"network_server_address\",\n         \"application_server_address\"\n      ]\n   }\n}\n\nmsg.payload = create_device;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 280,
+        "wires": [
+            [
+                "c802342255ad2205"
+            ]
+        ]
+    },
+    {
+        "id": "c802342255ad2205",
+        "type": "http request",
+        "z": "e63e21ac547645de",
+        "name": "dev create",
+        "method": "DELETE",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://eu1.cloud.thethings.network/api/v3/applications/{{{app_id}}}/devices/{{{dev_id}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 730,
+        "y": 280,
+        "wires": [
+            [
+                "e18589d21b0ec2a7",
+                "a38c31443c452419"
+            ]
+        ]
+    },
+    {
+        "id": "7edbede61f58ffb5",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "let dev_id = msg.dev_id;\nlet dev_eui = msg.dev_eui;\nlet join_eui = msg.join_eui;\nlet app_id = msg.app_id;\n\n\n\nlet register_name_server = {\n   \"end_device\":{\n      \"supports_join\": true,\n      \"supports_class_c\": true,\n    //   \"multicast\": true,\n      \"lorawan_version\": \"MAC_V1_0_3\",\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui,\n         \"application_ids\":{\n            \"application_id\": app_id\n         }\n      },\n      \"frequency_plan_id\":\"US_902_928_FSB_2\",\n      \"lorawan_phy_version\":\"PHY_V1_0_3_REV_A\",\n      \"mac_settings\":{\n         \"class_c_timeout\":\"60s\",\n         \"supports_32_bit_f_cnt\": true\n      },\n      \"version_ids\":{\n          \"band_id\":\"US_902_928\"\n      }\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"supports_join\",\n         \"supports_class_c\",\n        //  \"multicast\",\n         \"lorawan_version\",\n         \"ids.device_id\",\n         \"ids.dev_eui\",\n         \"ids.join_eui\",\n         \"ids.application_ids.application_id\",\n         \"frequency_plan_id\",\n         \"lorawan_phy_version\",\n         \"mac_settings.class_c_timeout\",\n         \"mac_settings.supports_32_bit_f_cnt\",\n         \"version_ids.band_id\"\n      ]\n   }\n}\n\nmsg.payload = register_name_server;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 280,
+        "y": 280,
+        "wires": [
+            [
+                "d6fa70a680a45b25"
+            ]
+        ]
+    },
+    {
+        "id": "d6fa70a680a45b25",
+        "type": "http request",
+        "z": "e63e21ac547645de",
+        "name": "name server",
+        "method": "DELETE",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://nam1.cloud.thethings.network/api/v3/ns/applications/{{{app_id}}}/devices/{{{dev_id}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 430,
+        "y": 280,
+        "wires": [
+            [
+                "854cb3bda7fca56a"
+            ]
+        ]
+    },
+    {
+        "id": "e064a072a8b695ab",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "let dev_id = msg.dev_id;\nlet dev_eui = msg.dev_eui;\nlet join_eui = msg.join_eui;\nlet app_id = msg.app_id;\n\nlet register_application_server = {\n   \"end_device\":{\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui,\n         \"application_ids\":{\n            \"application_id\": app_id\n         }\n      },\n      \"version_ids\":{}\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"ids.device_id\",\n         \"ids.dev_eui\",\n         \"ids.join_eui\",\n         \"ids.application_ids.application_id\",\n         \"version_ids\"\n      ]\n   }\n}\n\nmsg.payload = register_application_server;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 220,
+        "wires": [
+            [
+                "777484746c701b38"
+            ]
+        ]
+    },
+    {
+        "id": "777484746c701b38",
+        "type": "http request",
+        "z": "e63e21ac547645de",
+        "name": "app server",
+        "method": "DELETE",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://nam1.cloud.thethings.network/api/v3/as/applications/{{{app_id}}}/devices/{{{dev_id}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 750,
+        "y": 220,
+        "wires": [
+            [
+                "7edbede61f58ffb5"
+            ]
+        ]
+    },
+    {
+        "id": "828f10d08edf2e15",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "let dev_id = msg.dev_id;\nlet dev_eui = \"\";\nlet join_eui = \"0000000000000000\";\nlet app_id = msg.app_id;\n\n\nfor (let n=0, l=dev_id.length; n<l; n++) \n     {\n\t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n\t\tdev_eui += hex;\n\t }\n\t \n\nmsg.dev_id = dev_id;\nmsg.dev_eui = dev_eui;\nmsg.join_eui = join_eui;\nmsg.app_id = app_id;\n\nlet register_join_server = {\n   \"end_device\":{\n      \"ids\":{\n         \"device_id\": dev_id,\n         \"dev_eui\": dev_eui,\n         \"join_eui\": join_eui\n      },\n      \"network_server_address\":\"nam1.cloud.thethings.network\",\n      \"application_server_address\":\"nam1.cloud.thethings.network\"\n   },\n   \"field_mask\":{\n      \"paths\":[\n         \"ids.device_id\",\n         \"ids.dev_eui\",\n         \"ids.join_eui\",\n         \"network_server_address\",\n         \"application_server_address\"\n      ]\n   }\n}\n\nmsg.payload = register_join_server;\nmsg.headers = {};\nmsg.headers.Authorization = msg.tti_token;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 220,
+        "wires": [
+            [
+                "f9afd1c877d7f0c6"
+            ]
+        ]
+    },
+    {
+        "id": "f9afd1c877d7f0c6",
+        "type": "http request",
+        "z": "e63e21ac547645de",
+        "name": "join server",
+        "method": "DELETE",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://nam1.cloud.thethings.network/api/v3/js/applications/{{{app_id}}}/devices/{{{dev_id}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 450,
+        "y": 220,
+        "wires": [
+            [
+                "e064a072a8b695ab"
+            ]
+        ]
+    },
+    {
+        "id": "e18589d21b0ec2a7",
+        "type": "debug",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 990,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "c44e3c1db185f029",
+        "type": "credentials",
+        "z": "e63e21ac547645de",
+        "name": "TTI token store",
+        "props": [
+            {
+                "value": "tti_user",
+                "type": "msg"
+            },
+            {
+                "value": "tti_token",
+                "type": "msg"
+            }
+        ],
+        "x": 140,
+        "y": 220,
+        "wires": [
+            [
+                "828f10d08edf2e15"
+            ]
+        ]
+    },
+    {
+        "id": "c90ecd6515714e53",
+        "type": "split",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 450,
+        "y": 160,
+        "wires": [
+            [
+                "de475b0d543bb171"
+            ]
+        ]
+    },
+    {
+        "id": "de475b0d543bb171",
+        "type": "change",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "dev_id",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 610,
+        "y": 160,
+        "wires": [
+            [
+                "b68d74deccb304eb"
+            ]
+        ]
+    },
+    {
+        "id": "b68d74deccb304eb",
+        "type": "delay",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "2",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 790,
+        "y": 160,
+        "wires": [
+            [
+                "c44e3c1db185f029"
+            ]
+        ]
+    },
+    {
+        "id": "2353fcc875d02a21",
+        "type": "ui_button",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "group": "b0207c7b4d5ca6a1",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Delete device(s)",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 160,
+        "y": 160,
+        "wires": [
+            [
+                "982e81a10ba32cb9"
+            ]
+        ]
+    },
+    {
+        "id": "67bdc6efbb6b1c3d",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "flow.set('delete_array', msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "982e81a10ba32cb9",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "let delete_array = flow.get(\"delete_array\");\nmsg.payload = delete_array;\nmsg.app_id = flow.get('app_id');\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 160,
+        "wires": [
+            [
+                "c90ecd6515714e53"
+            ]
+        ]
+    },
+    {
+        "id": "ed41573b498b146d",
+        "type": "ui_toast",
+        "z": "e63e21ac547645de",
+        "position": "top right",
+        "displayTime": "3",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": false,
+        "className": "",
+        "topic": "",
+        "name": "",
+        "x": 990,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "a38c31443c452419",
+        "type": "function",
+        "z": "e63e21ac547645de",
+        "name": "",
+        "func": "msg.payload = \"Deleted: \" + msg.dev_id;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 900,
+        "y": 280,
+        "wires": [
+            [
+                "ed41573b498b146d"
+            ]
+        ]
+    },
+    {
         "id": "2d3dafa759849701",
         "type": "debug",
         "z": "41b751a153893032",
@@ -4642,7 +5236,7 @@
         "id": "9ca3c022c6a0eb66",
         "type": "exec",
         "z": "41b751a153893032",
-        "command": "influx delete --bucket \"{{{payload}}}\" -o floodnet --start '1970-01-01T00:00:00Z' --stop '2025-12-31T23:59:00Z'",
+        "command": "/usr/local/bin/influx delete --bucket \"{{{payload}}}\" -o floodnet --start '1970-01-01T00:00:00Z' --stop '2025-12-31T23:59:00Z'",
         "addpay": "",
         "append": "",
         "useSpawn": "false",
@@ -4679,7 +5273,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "floodnet_lab",
+        "payload": "floodnet-test",
         "payloadType": "str",
         "x": 150,
         "y": 240,
