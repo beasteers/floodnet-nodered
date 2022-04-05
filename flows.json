@@ -391,6 +391,33 @@
         "sessionExpiry": ""
     },
     {
+        "id": "232424bf32c1529c",
+        "type": "mqtt-broker",
+        "name": "nyu-production",
+        "broker": "nam1.cloud.thethings.network",
+        "port": "8883",
+        "tls": "4ad802e2463acc54",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    },
+    {
         "id": "d5ace342b009a2b0",
         "type": "mqtt in",
         "z": "b8f9c9a92652ae8e",
@@ -407,7 +434,8 @@
         "y": 20,
         "wires": [
             [
-                "d4dd1fb1.22cae"
+                "d4dd1fb1.22cae",
+                "013cba75aa7ab39c"
             ]
         ]
     },
@@ -416,7 +444,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "TTN V3 JSON processor",
-        "func": "var uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: '' + uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: '' + uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: '' + uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']) + 'i',\n            f_cnt: uplink_info['f_cnt'] + 'i',\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi_dbm'] = gw_object_sorted[gw_key]['rssi'] + 'i';\n    fields['gw_' + gw_cnt + '_snr_db'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}else{\n    msg.app_type = dev_info['device_id'].slice(0, 2);\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep_s'] = '' + '' + sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = '' + sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta_ms'] = '' + sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = '' + sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = '' + sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = '' + fw_ver;\n\n\n}\nmsg.app_name = dev_info['application_ids']['application_id'];\nmsg.dev_id = dev_info['device_id'];\nmsg.payload = { data:\n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};\n\nreturn msg;",
+        "func": "if(msg.payload.downlink_nack !== undefined || msg.payload['uplink_message'] == undefined){\n    // Its a downlink, ignore but should probably log these at some point\n    return;\n}\n\nvar uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: '' + uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: '' + uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: '' + uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']) + 'i',\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\nif (uplink_info['f_cnt'] + 'i' != 'undefinedi'){\n    fields.f_cnt = uplink_info['f_cnt'] + 'i'\n}\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi_dbm'] = gw_object_sorted[gw_key]['rssi'] + 'i';\n    fields['gw_' + gw_cnt + '_snr_db'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}else{\n    msg.app_type = dev_info['device_id'].slice(0, 2);\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep_s'] = '' + '' + sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = '' + sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta_ms'] = '' + sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = '' + sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = '' + sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = '' + fw_ver;\n\n\n}\nmsg.app_name = dev_info['application_ids']['application_id'];\nmsg.dev_id = dev_info['device_id'];\nmsg.payload = { data:\n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};\n\nmsg.orig_payload = msg.payload;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -426,7 +454,7 @@
         "y": 80,
         "wires": [
             [
-                "1fcf249d1c269ca1"
+                "c6d0a64faa67e085"
             ]
         ]
     },
@@ -435,7 +463,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - flood sensor",
-        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    var night_median = global.get(tags.dev_id + '.night_median');\n    if (night_median !== undefined){\n        var depth = -distance + night_median;\n        fields['depth_mm'] = depth + 'i';\n    }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\n// msg.payload = \n//     {\n//         bucket: msg.app_name,\n//         precision: 'ms',\n//         data: \n//         [\n//             {\n//             measurement: 'flood-sensor',\n//             fields,\n//             tags,\n//             timestamp: msg.payload['ts']\n//             }\n//         ]\n//     };\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
+        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    var night_median = msg.night_median;\n    if (night_median !== undefined){\n        var depth = -distance + night_median;\n        fields['depth_raw_mm'] = depth + 'i';\n        \n        if (depth <= 10 || depth > night_median){\n            depth = 0;\n        }\n        \n        fields['depth_filt_mm'] = depth + 'i';\n    }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\n// msg.payload = \n//     {\n//         bucket: msg.app_name,\n//         precision: 'ms',\n//         data: \n//         [\n//             {\n//             measurement: 'flood-sensor',\n//             fields,\n//             tags,\n//             timestamp: msg.payload['ts']\n//             }\n//         ]\n//     };\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -445,7 +473,7 @@
         "y": 240,
         "wires": [
             [
-                "5bb5b33dc3b86e38"
+                "bb0aa76cdb8fa1d0"
             ]
         ]
     },
@@ -481,8 +509,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 4,
-        "x": 90,
-        "y": 240,
+        "x": 110,
+        "y": 300,
         "wires": [
             [
                 "4f19e58b65fd28a1",
@@ -549,7 +577,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 350,
+        "x": 370,
         "y": 200,
         "wires": [
             [
@@ -570,7 +598,7 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-live",
-        "x": 820,
+        "x": 840,
         "y": 300,
         "wires": []
     },
@@ -590,25 +618,6 @@
         "x": 550,
         "y": 200,
         "wires": []
-    },
-    {
-        "id": "5bb5b33dc3b86e38",
-        "type": "function",
-        "z": "b8f9c9a92652ae8e",
-        "name": "Depth filter",
-        "func": "var depth = msg.payload[0].fields.depth_mm;\n\nif (depth <= 10 || depth > 4500){\n    depth = 0;\n}\n\nmsg.payload[0].fields.depth_mm = depth + 'i';\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 610,
-        "y": 240,
-        "wires": [
-            [
-                "bb0aa76cdb8fa1d0"
-            ]
-        ]
     },
     {
         "id": "c76d93addfcecc14",
@@ -646,7 +655,8 @@
         "y": 80,
         "wires": [
             [
-                "d4dd1fb1.22cae"
+                "d4dd1fb1.22cae",
+                "013cba75aa7ab39c"
             ]
         ]
     },
@@ -667,7 +677,8 @@
         "y": 140,
         "wires": [
             [
-                "d4dd1fb1.22cae"
+                "d4dd1fb1.22cae",
+                "013cba75aa7ab39c"
             ]
         ]
     },
@@ -733,10 +744,11 @@
         "repair": false,
         "outputs": 3,
         "x": 650,
-        "y": 300,
+        "y": 280,
         "wires": [
             [
-                "59c384dba7c30e0d"
+                "59c384dba7c30e0d",
+                "d1f0313a1241e95a"
             ],
             [
                 "3bfa5616beb0c833"
@@ -747,83 +759,202 @@
         ]
     },
     {
-        "id": "1fcf249d1c269ca1",
+        "id": "c6d0a64faa67e085",
+        "type": "file in",
+        "z": "b8f9c9a92652ae8e",
+        "name": "Read dep_id file",
+        "filename": "/data/sensor_meta/deploy_id_map.txt",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 500,
+        "y": 80,
+        "wires": [
+            [
+                "7daebca69f042623"
+            ]
+        ]
+    },
+    {
+        "id": "56112e38ee71332a",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "Create query",
-        "func": "var bucket_name = msg.app_name;\nvar dev_id = msg.dev_id;\n\nvar agg_str = 'mean';\n\nvar query = \n`\nfrom(bucket: \"${bucket_name}\")\n  |> range(start: -6h, stop: now())\n  |> filter(fn: (r) => r[\"dev_id\"] == \"${dev_id}\")\n  |> last()\n  |> keep(columns: [\"deployment_id\"])\n`\n\nmsg.orig_payload = msg.payload;\n\nmsg.query = query;\n\nreturn msg;",
+        "name": "",
+        "func": "var dev_list = [];\nvar dep_list = [];\nvar night_median_list = [];\nmsg.payload.forEach((element) => {\n  dev_list.push(element.col1);\n  dep_list.push(element.col2);\n  night_median_list.push(element.col3);\n});\n\nvar dev_idx = dev_list.lastIndexOf(msg.dev_id);\n\nif(dev_idx != -1){\n    msg.deployment_id = dep_list[dev_idx];\n    msg.night_median = night_median_list[dev_idx];\n}else{\n    msg.deployment_id = undefined;\n}\n\nmsg.payload = msg.orig_payload;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 490,
+        "x": 780,
         "y": 80,
         "wires": [
             [
-                "a6f8b616031d371d"
+                "9426b45005b4832d"
             ]
         ]
     },
     {
-        "id": "a6f8b616031d371d",
-        "type": "influxdb in",
+        "id": "7daebca69f042623",
+        "type": "csv",
         "z": "b8f9c9a92652ae8e",
-        "influxdb": "4b9a03aed4358412",
         "name": "",
-        "query": "",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "floodnet",
-        "x": 690,
+        "sep": ",",
+        "hdrin": "",
+        "hdrout": "none",
+        "multi": "mult",
+        "ret": "\\n",
+        "temp": "",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 650,
         "y": 80,
         "wires": [
             [
-                "5b2bd5781d65aede",
-                "459b0d133e33c4ef"
+                "56112e38ee71332a"
             ]
         ]
     },
     {
-        "id": "5b2bd5781d65aede",
+        "id": "d1f0313a1241e95a",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "",
-        "func": "if (msg.payload.length > 0){\n    msg.deployment_id = msg.payload[0].deployment_id;\n}\nmsg.payload = msg.orig_payload;\nreturn msg;",
+        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nmsg.payload[0].fields.dist_mm = parseInt(msg.payload[0].fields.dist_mm);\nmsg.payload[0].fields.lora_freq_hz = parseInt(msg.payload[0].fields.lora_freq_hz);\nmsg.payload[0].fields.f_cnt = parseInt(msg.payload[0].fields.f_cnt);\nmsg.payload[0].fields.depth_mm = parseInt(msg.payload[0].fields.depth_mm);\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 300,
-        "y": 140,
+        "x": 940,
+        "y": 220,
         "wires": [
             [
-                "9426b45005b4832d",
-                "108489996e3ea96b"
+                "2022baa0e88d34cf"
             ]
         ]
     },
     {
-        "id": "108489996e3ea96b",
-        "type": "debug",
+        "id": "2022baa0e88d34cf",
+        "type": "http request",
         "z": "b8f9c9a92652ae8e",
         "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 510,
-        "y": 140,
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 1150,
+        "y": 220,
+        "wires": [
+            [
+                "f56074e0a37d1706"
+            ]
+        ]
+    },
+    {
+        "id": "f56074e0a37d1706",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1320,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ac48bb1fa35c4749",
+        "type": "comment",
+        "z": "b8f9c9a92652ae8e",
+        "name": "DONE (UNTESTED): Update to do all 2 depth calcs",
+        "info": "",
+        "x": 910,
+        "y": 460,
         "wires": []
     },
     {
-        "id": "459b0d133e33c4ef",
+        "id": "5207523ee01126b7",
+        "type": "mqtt in",
+        "z": "b8f9c9a92652ae8e",
+        "name": "nyu-production",
+        "topic": "#",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "232424bf32c1529c",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 80,
+        "y": 220,
+        "wires": [
+            [
+                "2c66b65b4104fc3f",
+                "013cba75aa7ab39c"
+            ]
+        ]
+    },
+    {
+        "id": "2c66b65b4104fc3f",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "func": "function hexify(dev_id){\n    let dev_eui = \"\";\n    for (let n=0, l=dev_id.length; n<l; n++) \n         {\n    \t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n    \t\tdev_eui += hex;\n    \t }\n    return dev_eui;\n}\n\nlet mappings = [\n    [\"rg-00002\",\"rg-00002\"],\n    [\"fn-00004\",\"fs-00003\"],\n    [\"fn-00005\",\"fs-00004\"],\n    [\"fn-00012\",\"fs-00009\"],\n    [\"fs-00014\",\"fs-00011\"],\n    [\"fs-00015\",\"fs-00012\"],\n    [\"fs-00016\",\"fs-00013\"],\n    [\"fs-00017\",\"fs-00014\"],\n    [\"fs-00018\",\"fs-00015\"],\n    [\"fs-00019\",\"fs-00016\"],\n    [\"fs-00020\",\"fs-00017\"],\n    [\"fs-00022\",\"fs-00018\"],\n    [\"fs-00023\",\"fs-00019\"],\n    [\"fs-00024\",\"fs-00020\"]\n];\n\nlet old_dev_id = msg.payload.end_device_ids.device_id;\n\nfor (let n=0, l=mappings.length; n<l; n++) {\n    if(mappings[n][0] == old_dev_id){\n        new_dev_id = mappings[n][1];\n        msg.payload.end_device_ids.device_id = new_dev_id;\n        msg.payload.end_device_ids.dev_eui = hexify(new_dev_id);\n        msg.payload.end_device_ids.application_ids.application_id = 'floodnet-live';\n        break;\n    }\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 260,
+        "y": 140,
+        "wires": [
+            [
+                "d4dd1fb1.22cae"
+            ]
+        ]
+    },
+    {
+        "id": "013cba75aa7ab39c",
+        "type": "switch",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "property": "msg.payload.downlink_nack",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "neq",
+                "v": "undefined",
+                "vt": "jsonata"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 250,
+        "y": 40,
+        "wires": [
+            [
+                "4e12b12b872ef0fe"
+            ]
+        ]
+    },
+    {
+        "id": "4e12b12b872ef0fe",
         "type": "debug",
         "z": "b8f9c9a92652ae8e",
         "name": "",
@@ -831,12 +962,21 @@
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
+        "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 810,
-        "y": 140,
+        "x": 410,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "f09c93e7822d13ea",
+        "type": "comment",
+        "z": "b8f9c9a92652ae8e",
+        "name": "TODO: route RTC sesnors to google sheets endpoint",
+        "info": "",
+        "x": 1140,
+        "y": 60,
         "wires": []
     },
     {
@@ -1778,7 +1918,8 @@
         "y": 220,
         "wires": [
             [
-                "4d2ae3bb71a480eb"
+                "4d2ae3bb71a480eb",
+                "7b614e862dd1232d"
             ]
         ]
     },
@@ -1884,7 +2025,8 @@
         "y": 560,
         "wires": [
             [
-                "44fac76d4e932ad9"
+                "44fac76d4e932ad9",
+                "1d17fa747b62c668"
             ]
         ]
     },
@@ -1906,6 +2048,38 @@
         "wires": []
     },
     {
+        "id": "7b614e862dd1232d",
+        "type": "debug",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 950,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "1d17fa747b62c668",
+        "type": "debug",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1090,
+        "y": 460,
+        "wires": []
+    },
+    {
         "id": "97a92550bb51b952",
         "type": "inject",
         "z": "54e1edf44c387788",
@@ -1924,7 +2098,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "[\t   'floodnet-test',\t   'floodnet-lab',\t   'floodnet-live'\t]",
+        "payload": "[\t   'floodnet-live'\t]",
         "payloadType": "jsonata",
         "x": 70,
         "y": 80,
@@ -1949,7 +2123,8 @@
         "y": 260,
         "wires": [
             [
-                "c9d6973e721d7130"
+                "c9d6973e721d7130",
+                "8744e043d5b34f18"
             ]
         ]
     },
@@ -1958,7 +2133,7 @@
         "type": "function",
         "z": "54e1edf44c387788",
         "name": "Create query",
-        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 5.0;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = 'nyu-production';\nvar field_name = 'dist_mm';\n\nvar agg_str = 'mean';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> keep(columns: [\"_value\", \"dev_id\"])\n  |> group(columns: [\"dev_id\"])\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"dev_id\"])\n|> rename(columns: {_value_mean: \"${agg_str}\", _value_stddev: \"stddev\"})\n|> filter(fn: (r) =>\n    r.stddev < ${std_limit}\n  )\n`\nmsg.query = query;\n\nreturn msg;",
+        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 10.0;\nvar max_val_filt = 4000;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = bucket_name;\nvar field_name = 'dist_mm';\n\nvar agg_str = 'median';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> filter(fn: (r) => r._value < ${max_val_filt})\n  |> keep(columns: [\"_value\", \"dev_id\"])\n  |> group(columns: [\"dev_id\"])\n  |> toFloat()\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"dev_id\"])\n|> rename(columns: {_value_median: \"${agg_str}\", _value_stddev: \"stddev\"})\n|> filter(fn: (r) => r.stddev < ${std_limit})\n`\nmsg.query = query;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1968,7 +2143,8 @@
         "y": 200,
         "wires": [
             [
-                "bb90fef6fb25b7ee"
+                "bb90fef6fb25b7ee",
+                "d44fa3133fc3a99e"
             ]
         ]
     },
@@ -1993,7 +2169,7 @@
         "type": "function",
         "z": "54e1edf44c387788",
         "name": "Create median insert",
-        "func": "var meas_array = [];\n\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    if (info.stddev < 5.0){\n        var global_var_name = info.dev_id + '.night_median';\n        global.set(global_var_name, info.mean);\n        msg.median = info.mean;\n        var influx_entry = {\n            measurement: 'flood-sensor',\n            fields: {\n                night_median_mm: info.mean\n            },\n            tags:{\n                sensor_id: info.dev_id\n            },\n            timestamp: new Date().getTime()\n        };\n        meas_array.push(influx_entry);\n    }\n}\n\nmsg.payload = meas_array;\nreturn msg;",
+        "func": "var meas_array = [];\nvar med_array = [];\nvar dev_id_array = [];\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    if (info.stddev < 10.0){\n        var global_var_name = info.dev_id + '.night_median';\n        global.set(global_var_name, info.median);\n        msg.median = info.median;\n        \n        med_array.push(msg.median);\n        dev_id_array.push(info.dev_id);\n        \n        var influx_entry = {\n            measurement: 'flood-sensor',\n            fields: {\n                night_median_mm: msg.median\n            },\n            tags:{\n                sensor_id: info.dev_id\n            },\n            timestamp: new Date().getTime()\n        };\n        meas_array.push(influx_entry);\n    }\n}\nmsg.med_array = med_array;\nmsg.dev_id_array = dev_id_array;\nmsg.payload = meas_array;\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2004,7 +2180,8 @@
         "wires": [
             [
                 "45af59cd0c241688",
-                "4257d78af3302b76"
+                "4257d78af3302b76",
+                "8d7a70ac84459159"
             ]
         ]
     },
@@ -2043,6 +2220,173 @@
                 "93083f815ba539af"
             ]
         ]
+    },
+    {
+        "id": "adc0c5b1e7e596c6",
+        "type": "comment",
+        "z": "54e1edf44c387788",
+        "name": "DONE (UNTESTED): Update to include correct apps and write nightmean values to lookup table",
+        "info": "",
+        "x": 1150,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "d44fa3133fc3a99e",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 490,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "8d7a70ac84459159",
+        "type": "file in",
+        "z": "54e1edf44c387788",
+        "name": "Read dep_id file",
+        "filename": "/data/sensor_meta/deploy_id_map.txt",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 700,
+        "y": 260,
+        "wires": [
+            [
+                "a5d2e4088c0d40da"
+            ]
+        ]
+    },
+    {
+        "id": "f1a3c9f0126fc622",
+        "type": "csv",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "sep": ",",
+        "hdrin": "",
+        "hdrout": "none",
+        "multi": "mult",
+        "ret": "\\n",
+        "temp": "",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 950,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a5d2e4088c0d40da",
+        "type": "function",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "func": "let lines = msg.payload.split(\"\\n\");\n\nlines.forEach((line, index) => {\n    var line_parts = line.split(\",\");\n    msg.dev_id_array.forEach((element, idx) => {\n        if (line_parts[0] == element) {\n            lines[index] = line_parts[0] + \",\" + line_parts[1] + \",\" + msg.med_array[idx];\n        }\n    });\n    \n});\n\nmsg.payload = lines.join(\"\\n\");\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 260,
+        "wires": [
+            [
+                "d41bd81967a828fe"
+            ]
+        ]
+    },
+    {
+        "id": "4bb31c8faf430f5b",
+        "type": "inject",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "props": [
+            {
+                "p": "med_array",
+                "v": "[2654,2554,2387]",
+                "vt": "jsonata"
+            },
+            {
+                "p": "dev_id_array",
+                "v": "[\"fs-00001\",\"fs-00002\",\"fs-00003\"]",
+                "vt": "jsonata"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 530,
+        "y": 140,
+        "wires": [
+            [
+                "8d7a70ac84459159"
+            ]
+        ]
+    },
+    {
+        "id": "6f6058ae65e3a362",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1330,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "d41bd81967a828fe",
+        "type": "file",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "filename": "/data/sensor_meta/deploy_id_map.txt",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 1110,
+        "y": 260,
+        "wires": [
+            [
+                "6f6058ae65e3a362"
+            ]
+        ]
+    },
+    {
+        "id": "8744e043d5b34f18",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 730,
+        "y": 180,
+        "wires": []
     },
     {
         "id": "3e6cb67dffee43dc",
@@ -4748,7 +5092,7 @@
         "type": "function",
         "z": "767ee0c79d6fcca5",
         "name": "",
-        "func": "let meas_type = \"\";\nlet dev_id = flow.get(\"dev_id\");\nlet lat = flow.get(\"lat\");\nlet lon = flow.get(\"lon\");\n\nswitch (dev_id.substring(0, 2)) {\n  case 'fs':\n    meas_type = \"flood-sensor\";\n    break;\n  case 'ts':\n    meas_type = \"tidal-sensor\";\n    break;\n  case 'rg':\n    meas_type = \"gateway-rain-gauge\";\n    break;\n}\n\nvar tags = {\n            dev_id: dev_id,\n            lat: lat,\n            lon: lon,\n            sensor_address_street_number: flow.get('sensor_address_street_number'),\n            sensor_address_street: flow.get('sensor_address_street'),\n            sensor_address_neighborhood: flow.get('sensor_address_neighborhood'),\n            sensor_address_borough: flow.get('sensor_address_borough'),\n            sensor_address_state: flow.get('sensor_address_state'),\n            sensor_address_zip: flow.get('sensor_address_zip'),\n            date_deployed: flow.get('date_deployed'),\n            sensor_mount: flow.get('sensor_mount'),\n            community_name: flow.get('community_name'),\n            visit_note: flow.get('visit_note'),\n            deployment_id: flow.get('deployment_id')\n        };\n\nvar fields = {\n            \"f_cnt\": 0\n        };\n\nmsg.bucket = flow.get(\"app_name\");\n\nmsg.payload = [\n    {\n        measurement: meas_type,\n        fields,\n        tags,\n        timestamp: Date.now()\n    }\n    ];\n    \nreturn msg;",
+        "func": "let meas_type = \"\";\nlet dev_id = flow.get(\"dev_id\");\nlet lat = flow.get(\"lat\");\nlet lon = flow.get(\"lon\");\n\nswitch (dev_id.substring(0, 2)) {\n  case 'fs':\n    meas_type = \"flood-sensor\";\n    break;\n  case 'ts':\n    meas_type = \"tidal-sensor\";\n    break;\n  case 'rg':\n    meas_type = \"gateway-rain-gauge\";\n    break;\n}\n\nvar tags = {\n            dev_id: dev_id,\n            lat: lat,\n            lon: lon,\n            sensor_address_street_number: flow.get('sensor_address_street_number'),\n            sensor_address_street: flow.get('sensor_address_street'),\n            sensor_address_neighborhood: flow.get('sensor_address_neighborhood'),\n            sensor_address_borough: flow.get('sensor_address_borough'),\n            sensor_address_state: flow.get('sensor_address_state'),\n            sensor_address_zip: flow.get('sensor_address_zip'),\n            date_deployed: flow.get('date_deployed'),\n            sensor_mount: flow.get('sensor_mount'),\n            community_name: flow.get('community_name'),\n            visit_note: flow.get('visit_note'),\n            deployment_id: flow.get('deployment_id')\n        };\n\nvar fields = {\n            \"f_cnt\": 0\n        };\n\nmsg.bucket = flow.get(\"app_name\");\nmsg.dev_id = dev_id;\nmsg.deployment_id = flow.get('deployment_id');\n\nmsg.lookup_content = msg.dev_id + \",\" + msg.deployment_id\n\nmsg.payload = [\n    {\n        measurement: meas_type,\n        fields,\n        tags,\n        timestamp: Date.now()\n    }\n    ];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -4985,6 +5329,143 @@
         "info": "",
         "x": 970,
         "y": 440,
+        "wires": []
+    },
+    {
+        "id": "b7dd6ab1de960e18",
+        "type": "file",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "filename": "/data/sensor_meta/deploy_id_map.txt",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "none",
+        "x": 890,
+        "y": 640,
+        "wires": [
+            [
+                "ac89786f93cdcb1d"
+            ]
+        ]
+    },
+    {
+        "id": "ac89786f93cdcb1d",
+        "type": "file in",
+        "z": "767ee0c79d6fcca5",
+        "name": "Read dep_id file",
+        "filename": "/data/sensor_meta/deploy_id_map.txt",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 1160,
+        "y": 640,
+        "wires": [
+            [
+                "93fa44542997aee6"
+            ]
+        ]
+    },
+    {
+        "id": "5ea0987e2e33eecd",
+        "type": "function",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "func": "var dev_list = [];\nmsg.payload.forEach((element) => {\n  dev_list.push(element.col1);\n});\n\nvar dev_dup_arr = [];\n\nfor(let i = 0; i < dev_list.length;i++) {\n    if(dev_list[i] == msg.dev_id) {\n        dev_dup_arr.push(i)\n    }\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1480,
+        "y": 640,
+        "wires": [
+            [
+                "595b25860f950148"
+            ]
+        ]
+    },
+    {
+        "id": "93fa44542997aee6",
+        "type": "csv",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "sep": ",",
+        "hdrin": "",
+        "hdrout": "none",
+        "multi": "mult",
+        "ret": "\\n",
+        "temp": "",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 1330,
+        "y": 640,
+        "wires": [
+            [
+                "5ea0987e2e33eecd",
+                "6cdb2eed6d733104"
+            ]
+        ]
+    },
+    {
+        "id": "595b25860f950148",
+        "type": "debug",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1650,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "ffcad12cb890f882",
+        "type": "inject",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "fs-00001,lary_red_mouse",
+        "payloadType": "str",
+        "x": 610,
+        "y": 640,
+        "wires": [
+            [
+                "b7dd6ab1de960e18"
+            ]
+        ]
+    },
+    {
+        "id": "6cdb2eed6d733104",
+        "type": "debug",
+        "z": "767ee0c79d6fcca5",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1470,
+        "y": 580,
         "wires": []
     },
     {
