@@ -463,7 +463,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - flood sensor",
-        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    var night_median = msg.night_median;\n    if (night_median !== undefined){\n        var depth = -distance + night_median;\n        fields['depth_raw_mm'] = depth + 'i';\n        \n        if (depth <= 10 || depth > night_median){\n            depth = 0;\n        }\n        \n        fields['depth_filt_mm'] = depth + 'i';\n    }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\n// msg.payload = \n//     {\n//         bucket: msg.app_name,\n//         precision: 'ms',\n//         data: \n//         [\n//             {\n//             measurement: 'flood-sensor',\n//             fields,\n//             tags,\n//             timestamp: msg.payload['ts']\n//             }\n//         ]\n//     };\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
+        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    var night_median = msg.night_median;\n    if (night_median !== undefined){\n        var depth = -distance + night_median;\n        fields['depth_raw_mm'] = depth + 'i';\n        \n        if (depth <= 10 || depth > night_median){\n            depth = 0;\n        }\n        \n        fields['depth_filt_mm'] = depth + 'i';\n        fields['depth_proc_mm'] = depth + 'i';\n    }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\n// msg.payload = \n//     {\n//         bucket: msg.app_name,\n//         precision: 'ms',\n//         data: \n//         [\n//             {\n//             measurement: 'flood-sensor',\n//             fields,\n//             tags,\n//             timestamp: msg.payload['ts']\n//             }\n//         ]\n//     };\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1852,7 +1852,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "[\t    8518750,\t    8516945\t]",
+        "payload": "[\t    8518750,\t    8516945,\t    8531680\t]",
         "payloadType": "jsonata",
         "x": 130,
         "y": 40,
@@ -1870,13 +1870,13 @@
         "method": "GET",
         "ret": "obj",
         "paytoqs": "ignore",
-        "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=NOS.COOPS.TAC.WL&date=latest&datum=MHHW&station={{{payload}}}&time_zone=gmt&units=metric&format=json",
+        "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=NOS.COOPS.TAC.WL&date=latest&datum=NAVD&station={{{payload}}}&time_zone=gmt&units=metric&format=json",
         "tls": "",
         "persist": false,
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 320,
+        "x": 180,
         "y": 160,
         "wires": [
             [
@@ -1895,7 +1895,7 @@
         "arraySpltType": "len",
         "stream": false,
         "addname": "",
-        "x": 230,
+        "x": 110,
         "y": 100,
         "wires": [
             [
@@ -1908,18 +1908,17 @@
         "type": "function",
         "z": "e0603b84198efa0a",
         "name": "",
-        "func": "var data_payload = msg.payload.data[0];\nvar station_id = msg.payload.metadata.id;\nvar sensor_id = 'noaa-tidal-' + station_id;\nvar sensor_name = msg.payload.metadata.name + ' (' + station_id + ')';\nvar lat = parseFloat(msg.payload.metadata.lat);\nvar lng = parseFloat(msg.payload.metadata.lon);\nvar ts = Date.parse(data_payload.t + ' GMT');\n\nvar fields = {\n            height_mm: parseFloat(data_payload.v) * 1000 || undefined,\n            sigma_mm: parseFloat(data_payload.s) || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "func": "var data_payload = msg.payload.data[0];\n\nif (data_payload === undefined){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = msg.payload.metadata.id;\nvar sensor_id = 'noaa-tidal-' + station_id;\nvar sensor_name = msg.payload.metadata.name + ' (' + station_id + ')';\nvar lat = parseFloat(msg.payload.metadata.lat);\nvar lng = parseFloat(msg.payload.metadata.lon);\nvar ts = Date.parse(data_payload.t + ' GMT');\n\nvar fields = {\n            navd88_mm: parseFloat(data_payload.v) * 1000 || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.influx_payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
-        "y": 220,
+        "x": 340,
+        "y": 280,
         "wires": [
             [
-                "4d2ae3bb71a480eb",
-                "7b614e862dd1232d"
+                "7021700bfe7cd70a"
             ]
         ]
     },
@@ -1936,8 +1935,8 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-live",
-        "x": 560,
-        "y": 300,
+        "x": 1360,
+        "y": 220,
         "wires": []
     },
     {
@@ -1954,15 +1953,15 @@
                 "vt": "str"
             }
         ],
-        "repeat": "300",
+        "repeat": "180",
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "[\t   \"01302020\",\t   \"01311875\",\t   \"01376562\",\t   \"01311850\",\t   \"01376520\",\t   \"01376515\",\t   \"01302027\",\t   \"01302025\",\t   \"01311145\",\t   \"01311143\",\t   \"01310740\",\t   \"01310521\",\t   \"01302250\"\t]",
+        "payload": "[\t   \"01311875\",\t   \"01311850\",\t   \"01311145\",\t   \"01376562\",\t   \"01311143\",\t   \"404609073452101\",\t   \"01302027\",\t   \"405119073551401\",\t   \"01302250\",\t   \"01310740\",\t   \"01310521\",\t   \"01396060\"\t]",
         "payloadType": "jsonata",
-        "x": 150,
-        "y": 380,
+        "x": 130,
+        "y": 300,
         "wires": [
             [
                 "0dca1a125cfcdcdd"
@@ -1996,7 +1995,7 @@
         "method": "GET",
         "ret": "obj",
         "paytoqs": "ignore",
-        "url": "https://waterwatch.usgs.gov/webservices/realtime?format=json&site={{{payload}}}",
+        "url": "http://waterservices.usgs.gov/nwis/iv/?format=json&sites={{{payload}}}&parameterCd=62620&siteStatus=all&period=PT1H",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -2006,7 +2005,7 @@
         "y": 500,
         "wires": [
             [
-                "7cf54d59c09487d0"
+                "f39edec5bd26aecf"
             ]
         ]
     },
@@ -2015,7 +2014,7 @@
         "type": "function",
         "z": "e0603b84198efa0a",
         "name": "",
-        "func": "if (msg.payload.sites == undefined){\n    return undefined;\n}\n\nvar data_payload = msg.payload.sites[0];\nvar station_id = data_payload.site_no;\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.station_nm;\nvar lat = data_payload.dec_lat_va;\nvar lng = data_payload.dec_long_va;\nvar ts = Date.parse(data_payload.stage_dt + ' ' + data_payload.tz_cd);\n\nvar fields = {\n            stage_mm: data_payload.stage * 304.8 || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "func": "if (msg.payload.sites === undefined || Object.keys(msg.payload.sites).length === 0){\n   return undefined;\n}\n\n\nvar data_payload = msg.payload.sites[0];\nvar station_id = data_payload.site_no;\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.station_nm;\nvar lat = data_payload.dec_lat_va;\nvar lng = data_payload.dec_long_va;\nvar ts = Date.parse(data_payload.stage_dt + ' ' + data_payload.tz_cd);\n\nvar fields = {\n            stage_mm: data_payload.stage * 304.8 || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2024,10 +2023,7 @@
         "x": 520,
         "y": 560,
         "wires": [
-            [
-                "44fac76d4e932ad9",
-                "1d17fa747b62c668"
-            ]
+            []
         ]
     },
     {
@@ -2048,7 +2044,260 @@
         "wires": []
     },
     {
-        "id": "7b614e862dd1232d",
+        "id": "7c9eefa386d25375",
+        "type": "http request",
+        "z": "e0603b84198efa0a",
+        "name": "NOAA VDATUM API",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://vdatum.noaa.gov/vdatumweb/api/tidal?lon={{{lng}}}&lat={{{lat}}}&t_v_frame={{{payload}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 920,
+        "y": 20,
+        "wires": [
+            [
+                "560959ca8c8e9232"
+            ]
+        ]
+    },
+    {
+        "id": "d6295bc7bcba1302",
+        "type": "file in",
+        "z": "e0603b84198efa0a",
+        "name": "Read datum file",
+        "filename": "/data/sensor_meta/datum.txt",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 660,
+        "y": 280,
+        "wires": [
+            [
+                "61d22faeaf35d53b"
+            ]
+        ]
+    },
+    {
+        "id": "61d22faeaf35d53b",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "func": "let lines = msg.payload.split(\"\\n\");\n\nmsg.datums = [\"mhhw\", \"mllw\"];\n\nmsg.found_match = false;\n\nlines.forEach((line, index) => {\n    var line_parts = line.split(\",\");\n    \n    if (line_parts[0] == msg.dev_id) {\n        msg.datum_payload = [];\n        msg.datums.forEach((datum_entry, datum_index) => {\n            msg.datum_payload.push({\"tar_vertical_frame\": datum_entry, \"tar_height\": line_parts[datum_index + 1]});\n        });\n        msg.found_match = true;\n    }\n});\n\nmsg.payload = msg.datums;\n\nmsg.lines = lines;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 180,
+        "wires": [
+            [
+                "3ebc70864470016e"
+            ]
+        ]
+    },
+    {
+        "id": "dc74c528e0e4af5b",
+        "type": "file",
+        "z": "e0603b84198efa0a",
+        "name": "Write datum file",
+        "filename": "/data/sensor_meta/datum.txt",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 1460,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a367f5783c8238ec",
+        "type": "split",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 750,
+        "y": 20,
+        "wires": [
+            [
+                "7c9eefa386d25375"
+            ]
+        ]
+    },
+    {
+        "id": "560959ca8c8e9232",
+        "type": "join",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "mode": "auto",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": true,
+        "timeout": "",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 1090,
+        "y": 20,
+        "wires": [
+            [
+                "7d5ef9f277d6d75b"
+            ]
+        ]
+    },
+    {
+        "id": "7d5ef9f277d6d75b",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "func": "let new_entry = msg.dev_id;\n\nmsg.payload.forEach((datum_entry, index) => {\n    let datum_offset = parseFloat(datum_entry.tar_height) * 1000;\n    let navd88_val = msg.influx_payload[0].fields.navd88_mm;\n    let datum_val = navd88_val + datum_offset;\n    msg.influx_payload[0].fields[datum_entry.tar_vertical_frame + \"_mm\"] = datum_val;\n    new_entry += ',' + datum_entry.tar_height;\n});\n\nmsg.lines.push(new_entry);\n\nconst clean_lines = msg.lines.filter(element => {\n  return element !== '';\n});\n\nmsg.lines = clean_lines.join(\"\\n\");\n\nmsg.payload = msg.influx_payload;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1120,
+        "y": 180,
+        "wires": [
+            [
+                "b37ac0e05846e70f",
+                "4d2ae3bb71a480eb"
+            ]
+        ]
+    },
+    {
+        "id": "3ebc70864470016e",
+        "type": "switch",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "property": "found_match",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "false"
+            },
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 630,
+        "y": 180,
+        "wires": [
+            [
+                "a367f5783c8238ec"
+            ],
+            [
+                "c226992612d4e581"
+            ]
+        ]
+    },
+    {
+        "id": "c928f08217446419",
+        "type": "change",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "lines",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1420,
+        "y": 80,
+        "wires": [
+            [
+                "dc74c528e0e4af5b"
+            ]
+        ]
+    },
+    {
+        "id": "b37ac0e05846e70f",
+        "type": "switch",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "property": "found_match",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "false"
+            },
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1250,
+        "y": 100,
+        "wires": [
+            [
+                "c928f08217446419"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "c226992612d4e581",
+        "type": "change",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "datum_payload",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 880,
+        "y": 180,
+        "wires": [
+            [
+                "7d5ef9f277d6d75b"
+            ]
+        ]
+    },
+    {
+        "id": "e3bb4c0c491c9929",
         "type": "debug",
         "z": "e0603b84198efa0a",
         "name": "",
@@ -2056,28 +2305,59 @@
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "false",
+        "complete": "true",
+        "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 950,
-        "y": 260,
+        "x": 790,
+        "y": 80,
         "wires": []
     },
     {
-        "id": "1d17fa747b62c668",
-        "type": "debug",
+        "id": "f39edec5bd26aecf",
+        "type": "function",
         "z": "e0603b84198efa0a",
         "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1090,
-        "y": 460,
-        "wires": []
+        "func": "var data_payload = msg.payload.value.timeSeries[0];\n\nif (data_payload === undefined || data_payload.values.length < 2){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = data_payload.sourceInfo.siteCode[0].value;\n\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.sourceInfo.siteName + ' (' + station_id + ')';\nvar lat = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.latitude);\nvar lng = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.longitude);\nvar ts = Date.parse(data_payload.values[1].value[9].dateTime);\n\nvar fields = {\n            navd88_mm: Math.round(parseFloat(data_payload.values[1].value[9].value) * 304.8) || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.influx_payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 340,
+        "wires": [
+            [
+                "7021700bfe7cd70a"
+            ]
+        ]
+    },
+    {
+        "id": "7021700bfe7cd70a",
+        "type": "switch",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nnull"
+            },
+            {
+                "t": "null"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 490,
+        "y": 300,
+        "wires": [
+            [
+                "d6295bc7bcba1302"
+            ],
+            []
+        ]
     },
     {
         "id": "97a92550bb51b952",
@@ -2133,7 +2413,7 @@
         "type": "function",
         "z": "54e1edf44c387788",
         "name": "Create query",
-        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 10.0;\nvar max_val_filt = 4000;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = bucket_name;\nvar field_name = 'dist_mm';\n\nvar agg_str = 'median';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> filter(fn: (r) => r._value < ${max_val_filt})\n  |> keep(columns: [\"_value\", \"dev_id\"])\n  |> group(columns: [\"dev_id\"])\n  |> toFloat()\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"dev_id\"])\n|> rename(columns: {_value_median: \"${agg_str}\", _value_stddev: \"stddev\"})\n|> filter(fn: (r) => r.stddev < ${std_limit})\n`\nmsg.query = query;\n\nreturn msg;",
+        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 10.0;\nvar max_val_filt = 4000;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = bucket_name;\nvar field_name = 'dist_mm';\n\nvar agg_str = 'median';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> filter(fn: (r) => r._value < ${max_val_filt})\n  |> keep(columns: [\"_value\", \"dev_id\", \"deployment_id\"])\n  |> toFloat()\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"deployment_id\"])\n|> rename(columns: {_value_median: \"${agg_str}\", _value_stddev: \"stddev\", dev_id_median: \"dev_id\"})\n|> filter(fn: (r) => r.stddev < ${std_limit})\n`\nmsg.query = query;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2144,7 +2424,8 @@
         "wires": [
             [
                 "bb90fef6fb25b7ee",
-                "d44fa3133fc3a99e"
+                "d44fa3133fc3a99e",
+                "74c6b859f6e38b4d"
             ]
         ]
     },
@@ -2169,7 +2450,7 @@
         "type": "function",
         "z": "54e1edf44c387788",
         "name": "Create median insert",
-        "func": "var meas_array = [];\nvar med_array = [];\nvar dev_id_array = [];\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    if (info.stddev < 10.0){\n        var global_var_name = info.dev_id + '.night_median';\n        global.set(global_var_name, info.median);\n        msg.median = info.median;\n        \n        med_array.push(msg.median);\n        dev_id_array.push(info.dev_id);\n        \n        var influx_entry = {\n            measurement: 'flood-sensor',\n            fields: {\n                night_median_mm: msg.median\n            },\n            tags:{\n                sensor_id: info.dev_id\n            },\n            timestamp: new Date().getTime()\n        };\n        meas_array.push(influx_entry);\n    }\n}\nmsg.med_array = med_array;\nmsg.dev_id_array = dev_id_array;\nmsg.payload = meas_array;\nreturn msg;",
+        "func": "var meas_array = [];\nvar med_array = [];\nvar dev_id_array = [];\nvar dep_id_array = [];\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    \n    var global_var_name = info.dev_id + '.night_median';\n    global.set(global_var_name, info.median);\n    msg.median = info.median;\n    \n    med_array.push(msg.median);\n    dev_id_array.push(info.dev_id);\n    dep_id_array.push(info.deployment_id);\n    \n    var influx_entry = {\n        measurement: 'flood-sensor',\n        fields: {\n            night_median_mm: msg.median\n        },\n        tags:{\n            sensor_id: info.dev_id\n        },\n        timestamp: new Date().getTime()\n    };\n    meas_array.push(influx_entry);\n    \n}\nmsg.med_array = med_array;\nmsg.dev_id_array = dev_id_array;\nmsg.dep_id_array = dep_id_array;\nmsg.payload = meas_array;\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2220,16 +2501,6 @@
                 "93083f815ba539af"
             ]
         ]
-    },
-    {
-        "id": "adc0c5b1e7e596c6",
-        "type": "comment",
-        "z": "54e1edf44c387788",
-        "name": "DONE (UNTESTED): Update to include correct apps and write nightmean values to lookup table",
-        "info": "",
-        "x": 1150,
-        "y": 120,
-        "wires": []
     },
     {
         "id": "d44fa3133fc3a99e",
@@ -2293,7 +2564,7 @@
         "type": "function",
         "z": "54e1edf44c387788",
         "name": "",
-        "func": "let lines = msg.payload.split(\"\\n\");\n\nlines.forEach((line, index) => {\n    var line_parts = line.split(\",\");\n    msg.dev_id_array.forEach((element, idx) => {\n        if (line_parts[0] == element) {\n            lines[index] = line_parts[0] + \",\" + line_parts[1] + \",\" + msg.med_array[idx];\n        }\n    });\n    \n});\n\nmsg.payload = lines.join(\"\\n\");\n\nreturn msg;",
+        "func": "let lines = msg.payload.split(\"\\n\");\nlet found_match = false;\n\nmsg.dev_id_array.forEach((element, idx) => {\n    found_match = false;\n    lines.forEach((line, index) => {\n        var line_parts = line.split(\",\");\n        if (line_parts[0] == element) {\n            lines[index] = line_parts[0] + \",\" + line_parts[1] + \",\" + msg.med_array[idx];\n            found_match = true;\n        }\n    });\n    if (!found_match){\n        lines.push(msg.dev_id_array[idx] + \",\" + msg.dep_id_array[idx] + \",\" + msg.med_array[idx])\n    }\n});\n\nmsg.payload = lines.join(\"\\n\");\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2386,6 +2657,22 @@
         "statusType": "auto",
         "x": 730,
         "y": 180,
+        "wires": []
+    },
+    {
+        "id": "74c6b859f6e38b4d",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 430,
+        "y": 200,
         "wires": []
     },
     {
