@@ -1014,7 +1014,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "",
-        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nmsg.payload[0].fields.dist_mm = parseInt(msg.payload[0].fields.dist_mm);\nmsg.payload[0].fields.lora_freq_hz = parseInt(msg.payload[0].fields.lora_freq_hz);\nmsg.payload[0].fields.f_cnt = parseInt(msg.payload[0].fields.f_cnt);\nmsg.payload[0].fields.depth_mm = parseInt(msg.payload[0].fields.depth_mm);\nmsg.payload[0].fields.depth_raw_mm = parseInt(msg.payload[0].fields.depth_raw_mm);\nmsg.payload[0].fields.depth_filt_mm = parseInt(msg.payload[0].fields.depth_filt_mm);\nmsg.payload[0].fields.depth_proc_mm = parseInt(msg.payload[0].fields.depth_proc_mm);\n\nreturn msg;",
+        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nif (msg.payload[0].measurement != \"flood-sensor\"){\n    return undefined;\n}\n\nmsg.payload[0].fields.dist_mm = parseInt(msg.payload[0].fields.dist_mm);\nmsg.payload[0].fields.lora_freq_hz = parseInt(msg.payload[0].fields.lora_freq_hz);\nmsg.payload[0].fields.f_cnt = parseInt(msg.payload[0].fields.f_cnt);\nmsg.payload[0].fields.depth_mm = parseInt(msg.payload[0].fields.depth_mm);\nmsg.payload[0].fields.depth_raw_mm = parseInt(msg.payload[0].fields.depth_raw_mm);\nmsg.payload[0].fields.depth_filt_mm = parseInt(msg.payload[0].fields.depth_filt_mm);\nmsg.payload[0].fields.depth_proc_mm = parseInt(msg.payload[0].fields.depth_proc_mm);\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1190,19 +1190,17 @@
         "id": "3c0e39c427c2e21d",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "func": "let buffer_size = 5;\nlet var_name = msg.dev_id + '_depth_buffer';\nlet depth_val = parseInt(msg.payload[0].fields.depth_filt_mm);\nif (flow.get(var_name) == undefined){\n    flow.set(var_name, []);\n}\n\nflow.get(var_name).push(depth_val);\n\nif (flow.get(var_name).length == buffer_size + 1){\n    flow.get(var_name).shift();\n}\nnode.warn(var_name);\nmsg.payload = flow.get(var_name);\nreturn msg;",
+        "name": "ML buffer",
+        "func": "let buffer_size = 5;\nlet var_name = msg.dev_id + '_depth_buffer';\nlet depth_val = parseInt(msg.payload[0].fields.depth_filt_mm);\nif (flow.get(var_name) == undefined){\n    flow.set(var_name, []);\n}\n\nflow.get(var_name).push(depth_val);\n\nif (flow.get(var_name).length == buffer_size + 1){\n    flow.get(var_name).shift();\n}\n// node.warn(var_name);\nmsg.payload = flow.get(var_name);\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 820,
-        "y": 500,
+        "x": 680,
+        "y": 520,
         "wires": [
-            [
-                "4b04979e74856e95"
-            ]
+            []
         ]
     },
     {
@@ -1220,6 +1218,22 @@
         "statusType": "auto",
         "x": 1230,
         "y": 600,
+        "wires": []
+    },
+    {
+        "id": "a3189571d64323b5",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1090,
+        "y": 80,
         "wires": []
     },
     {
@@ -1756,7 +1770,8 @@
         "y": 200,
         "wires": [
             [
-                "51f38eac8def364f"
+                "51f38eac8def364f",
+                "ceac54f342a9e889"
             ]
         ]
     },
@@ -2074,6 +2089,64 @@
             [
                 "20fd99b272aaccde"
             ]
+        ]
+    },
+    {
+        "id": "ceac54f342a9e889",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 160,
+        "wires": [
+            [
+                "1948c11829f1050f"
+            ]
+        ]
+    },
+    {
+        "id": "1948c11829f1050f",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 930,
+        "y": 160,
+        "wires": [
+            [
+                "821cdc05c82fbd0a"
+            ]
+        ]
+    },
+    {
+        "id": "821cdc05c82fbd0a",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 160,
+        "wires": [
+            []
         ]
     },
     {
@@ -2426,7 +2499,8 @@
             [
                 "b37ac0e05846e70f",
                 "4d2ae3bb71a480eb",
-                "4ebeda902593462a"
+                "4ebeda902593462a",
+                "d6f6b3888bd06c8f"
             ]
         ]
     },
@@ -2615,9 +2689,67 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1370,
-        "y": 320,
+        "x": 1290,
+        "y": 360,
         "wires": []
+    },
+    {
+        "id": "d6f6b3888bd06c8f",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1340,
+        "y": 280,
+        "wires": [
+            [
+                "f0ed6eec16d38a64"
+            ]
+        ]
+    },
+    {
+        "id": "f0ed6eec16d38a64",
+        "type": "http request",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 1550,
+        "y": 280,
+        "wires": [
+            [
+                "98d5bacfccca5213"
+            ]
+        ]
+    },
+    {
+        "id": "98d5bacfccca5213",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1720,
+        "y": 280,
+        "wires": [
+            []
+        ]
     },
     {
         "id": "97a92550bb51b952",

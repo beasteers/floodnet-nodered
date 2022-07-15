@@ -745,5 +745,43 @@
                 "file": "/data/node_modules/node-red-contrib-function-npm/function-npm/function-npm.js"
             }
         }
+    },
+    "node-red-contrib-aedes": {
+        "name": "node-red-contrib-aedes",
+        "version": "0.7.0",
+        "local": true,
+        "user": false,
+        "nodes": {
+            "aedes-mqtt-broker": {
+                "name": "aedes-mqtt-broker",
+                "types": [
+                    "aedes broker"
+                ],
+                "enabled": true,
+                "local": true,
+                "user": false,
+                "module": "node-red-contrib-aedes",
+                "file": "/data/node_modules/node-red-contrib-aedes/aedes.js"
+            }
+        }
+    },
+    "node-red-contrib-tcp-client": {
+        "name": "node-red-contrib-tcp-client",
+        "version": "0.1.3",
+        "local": true,
+        "user": false,
+        "nodes": {
+            "tcp-client": {
+                "name": "tcp-client",
+                "types": [
+                    "tcp-client"
+                ],
+                "enabled": true,
+                "local": true,
+                "user": false,
+                "module": "node-red-contrib-tcp-client",
+                "file": "/data/node_modules/node-red-contrib-tcp-client/tcp-client.js"
+            }
+        }
     }
 }
