@@ -662,8 +662,8 @@
         "y": 240,
         "wires": [
             [
-                "bb0aa76cdb8fa1d0",
-                "3c0e39c427c2e21d"
+                "3c0e39c427c2e21d",
+                "62a33a2d546d7c2c"
             ]
         ]
     },
@@ -741,15 +741,15 @@
         "type": "debug",
         "z": "b8f9c9a92652ae8e",
         "name": "",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 470,
-        "y": 480,
+        "x": 110,
+        "y": 380,
         "wires": []
     },
     {
@@ -933,8 +933,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 650,
-        "y": 280,
+        "x": 670,
+        "y": 300,
         "wires": [
             [
                 "59c384dba7c30e0d",
@@ -1093,8 +1093,8 @@
         "id": "2c66b65b4104fc3f",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "func": "function hexify(dev_id){\n    let dev_eui = \"\";\n    for (let n=0, l=dev_id.length; n<l; n++) \n         {\n    \t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n    \t\tdev_eui += hex;\n    \t }\n    return dev_eui;\n}\n\nlet mappings = [\n    [\"rg-00002\",\"rg-00002\"],\n    [\"fn-00004\",\"fs-00003\"],\n    [\"fn-00005\",\"fs-00004\"],\n    [\"fn-00012\",\"fs-00009\"],\n    [\"fs-00014\",\"fs-00011\"],\n    [\"fs-00015\",\"fs-00012\"],\n    [\"fs-00016\",\"fs-00013\"],\n    [\"fs-00017\",\"fs-00014\"],\n    [\"fs-00018\",\"fs-00015\"],\n    [\"fs-00019\",\"fs-00016\"],\n    [\"fs-00020\",\"fs-00017\"],\n    [\"fs-00022\",\"fs-00018\"],\n    [\"fs-00023\",\"fs-00019\"],\n    [\"fs-00024\",\"fs-00020\"]\n];\n\nlet old_dev_id = msg.payload.end_device_ids.device_id;\n\nfor (let n=0, l=mappings.length; n<l; n++) {\n    if(mappings[n][0] == old_dev_id){\n        new_dev_id = mappings[n][1];\n        msg.payload.end_device_ids.device_id = new_dev_id;\n        msg.payload.end_device_ids.dev_eui = hexify(new_dev_id);\n        msg.payload.end_device_ids.application_ids.application_id = 'floodnet-live';\n        break;\n    }\n}\n\nreturn msg;",
+        "name": "fn -> fs",
+        "func": "function hexify(dev_id){\n    let dev_eui = \"\";\n    for (let n=0, l=dev_id.length; n<l; n++) \n         {\n    \t\tvar hex = Number(dev_id.charCodeAt(n)).toString(16);\n    \t\tdev_eui += hex;\n    \t }\n    return dev_eui;\n}\n\nlet mappings = [\n    [\"rg-00002\",\"rg-00002\"],\n    [\"fn-00004\",\"fs-00003\"],\n    [\"fn-00005\",\"fs-00004\"],\n    [\"fn-00012\",\"fs-00009\"],\n    [\"fs-00014\",\"fs-00011\"],\n    // [\"fs-00015\",\"fs-00012\"], // can be removed\n    [\"fs-00016\",\"fs-00013\"],\n    // [\"fs-00017\",\"fs-00014\"], // can be removed\n    [\"fs-00018\",\"fs-00015\"],\n    [\"fs-00019\",\"fs-00016\"],\n    [\"fs-00020\",\"fs-00017\"],\n    [\"fs-00022\",\"fs-00018\"],\n    // [\"fs-00023\",\"fs-00019\"], // can be removed\n    // [\"fs-00024\",\"fs-00020\"] // can be removed\n];\n\nlet old_dev_id = msg.payload.end_device_ids.device_id;\n\nfor (let n=0, l=mappings.length; n<l; n++) {\n    if(mappings[n][0] == old_dev_id){\n        new_dev_id = mappings[n][1];\n        msg.payload.end_device_ids.device_id = new_dev_id;\n        msg.payload.end_device_ids.dev_eui = hexify(new_dev_id);\n        msg.payload.end_device_ids.application_ids.application_id = 'floodnet-live';\n        break;\n    }\n}\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1129,7 +1129,8 @@
         "y": 40,
         "wires": [
             [
-                "4e12b12b872ef0fe"
+                "4e12b12b872ef0fe",
+                "976dac85d87c8ddd"
             ]
         ]
     },
@@ -1142,7 +1143,8 @@
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "false",
+        "complete": "payload",
+        "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
         "x": 410,
@@ -1197,8 +1199,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 680,
-        "y": 520,
+        "x": 460,
+        "y": 540,
         "wires": [
             []
         ]
@@ -1235,6 +1237,212 @@
         "x": 1090,
         "y": 80,
         "wires": []
+    },
+    {
+        "id": "62a33a2d546d7c2c",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "grad filter",
+        "func": "let buffer_size = 2;\nlet max_change_mmps = 5;\n\n// get global variable name\nlet var_name = msg.dev_id + '_depth_grad_buffer';\n\n// read msg\nconst {fields: {depth_filt_mm}, timestamp} = msg.payload[0];\nif(depth_filt_mm == undefined) return msg;\nlet depth_val = parseInt(depth_filt_mm);\nlet depth_time = parseFloat(timestamp);\n\n// update time buffer\nif (flow.get(var_name) == undefined){ \n    flow.set(var_name, []);\n}\nvar depths = flow.get(var_name);\nwhile (depths.length >= buffer_size){\n    depths.shift(); \n}\ndepths.push([depth_val, depth_time]);\nif(depths.length < buffer_size) { \n    return msg; \n}\n\n// get the rate of change of depth\nlet [[depth1, t1], [depth2, t2]] = depths;\nlet dd = depth2 - depth1;\nlet dt = (t2 - t1) / 1000.0;\nddepth_dt = dd / Math.max(dt, 0.001);\nif(ddepth_dt > max_change_mmps) {\n    depths[1][0] = depth1;\n    node.warn(`gradient filter ${dd} in ${dt}s ∆mm/s=${ddepth_dt}`)\n    msg.payload[0].fields.depth_filt_mm = depth1+\"i\";\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 480,
+        "wires": [
+            [
+                "bb0aa76cdb8fa1d0"
+            ]
+        ]
+    },
+    {
+        "id": "a6846eadefcf63cd",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "5",
+        "payloadType": "num",
+        "x": 150,
+        "y": 640,
+        "wires": [
+            [
+                "e2009fb501734907"
+            ]
+        ]
+    },
+    {
+        "id": "98c21011d7eb1821",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "0",
+        "payloadType": "num",
+        "x": 150,
+        "y": 720,
+        "wires": [
+            [
+                "e2009fb501734907"
+            ]
+        ]
+    },
+    {
+        "id": "2d8189828b0ef9b4",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "3",
+        "payloadType": "num",
+        "x": 150,
+        "y": 680,
+        "wires": [
+            [
+                "e2009fb501734907"
+            ]
+        ]
+    },
+    {
+        "id": "a21b4cdd69a37079",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "100",
+        "payloadType": "num",
+        "x": 150,
+        "y": 600,
+        "wires": [
+            [
+                "e2009fb501734907"
+            ]
+        ]
+    },
+    {
+        "id": "e2009fb501734907",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "# > payload",
+        "func": "msg.payload = [\n    {\n        timestamp: Date.now(), \n        fields: {depth_filt_mm:  msg.payload}\n    }    \n]\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 660,
+        "wires": [
+            [
+                "6dd4ec1a4a59216c"
+            ]
+        ]
+    },
+    {
+        "id": "976dac85d87c8ddd",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "6265ec2a638b22d1",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload[0].fields.depth_filt_mm",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 750,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "6dd4ec1a4a59216c",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "grad filter",
+        "func": "let buffer_size = 2;\nlet max_change_mmps = 5;\n\n// get global variable name\nlet var_name = msg.dev_id + '_depth_grad_buffer';\n\n// read msg\nconst {fields: {depth_filt_mm}, timestamp} = msg.payload[0];\nif(depth_filt_mm == undefined) return msg;\nlet depth_val = parseInt(depth_filt_mm);\nlet depth_time = parseFloat(timestamp);\n\n// update time buffer\nif (flow.get(var_name) == undefined){ \n    flow.set(var_name, []);\n}\nvar depths = flow.get(var_name);\nwhile (depths.length >= buffer_size){\n    depths.shift(); \n}\ndepths.push([depth_val, depth_time]);\nif(depths.length < buffer_size) { \n    return msg; \n}\n\n// get the rate of change of depth\nlet [[depth1, t1], [depth2, t2]] = depths;\nlet dd = depth2 - depth1;\nlet dt = (t2 - t1) / 1000.0;\nddepth_dt = dd / Math.max(dt, 0.001);\nif(ddepth_dt > max_change_mmps) {\n    depths[1][0] = depth1;\n    node.warn(`gradient filter ${dd} in ${dt}s ∆mm/s=${ddepth_dt}`)\n    msg.payload[0].fields.depth_filt_mm = depth1+\"i\";\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 660,
+        "wires": [
+            [
+                "6265ec2a638b22d1"
+            ]
+        ]
     },
     {
         "id": "a333bbcff1929612",
