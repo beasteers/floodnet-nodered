@@ -71,6 +71,14 @@
         "env": []
     },
     {
+        "id": "50d1ba0730ca6bda",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "888786c5.d5aab8",
         "type": "subflow",
         "name": "FIFO",
@@ -652,7 +660,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Payload decoder - flood sensor",
-        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    var night_median = msg.night_median;\n    if (night_median !== undefined){\n        var depth = -distance + night_median;\n        fields['depth_raw_mm'] = depth + 'i';\n        \n        if (depth <= 10 || depth > night_median){\n            depth = 0;\n        }\n        \n        fields['depth_filt_mm'] = depth + 'i';\n        fields['depth_proc_mm'] = depth + 'i';\n    }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
+        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    var night_median = msg.night_median;\n    if (night_median !== undefined){\n        var depth = -distance + night_median;\n        if(isNaN(depth)) {\n            node.warn(\n                `${msg.deployment_id}: ${depth} is NaN. ${night_median} - ${distance}`);\n        }\n        fields['depth_raw_mm'] = depth + 'i';\n        \n        if (depth <= 10){\n            depth = 0;\n        }\n        if(depth > night_median) {\n            depth = undefined;\n        }\n        \n        // var depthi = depth !== undefined ? depth + 'i' : undefined;\n        if(depth !== undefined) {\n            fields['depth_filt_mm'] = depth + 'i';\n            fields['depth_proc_mm'] = depth + 'i';\n        }\n        \n    }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1184,8 +1192,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1170,
-        "y": 660,
+        "x": 1130,
+        "y": 500,
         "wires": []
     },
     {
@@ -1202,7 +1210,9 @@
         "x": 460,
         "y": 540,
         "wires": [
-            []
+            [
+                "a53e22633b368005"
+            ]
         ]
     },
     {
@@ -1243,7 +1253,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "grad filter",
-        "func": "let buffer_size = 2;\nlet max_change_mmps = 5;\n\n// get global variable name\nlet var_name = msg.dev_id + '_depth_grad_buffer';\n\n// read msg\nconst {fields: {depth_filt_mm}, timestamp} = msg.payload[0];\nif(depth_filt_mm == undefined) return msg;\nlet depth_val = parseInt(depth_filt_mm);\nlet depth_time = parseFloat(timestamp);\n\n// update time buffer\nif (flow.get(var_name) == undefined){ \n    flow.set(var_name, []);\n}\nvar depths = flow.get(var_name);\nwhile (depths.length >= buffer_size){\n    depths.shift(); \n}\ndepths.push([depth_val, depth_time]);\nif(depths.length < buffer_size) { \n    return msg; \n}\n\n// get the rate of change of depth\nlet [[depth1, t1], [depth2, t2]] = depths;\nlet dd = depth2 - depth1;\nlet dt = (t2 - t1) / 1000.0;\nddepth_dt = dd / Math.max(dt, 0.001);\nif(ddepth_dt > max_change_mmps) {\n    depths[1][0] = depth1;\n    node.warn(`gradient filter ${dd} in ${dt}s ∆mm/s=${ddepth_dt}`)\n    msg.payload[0].fields.depth_filt_mm = depth1+\"i\";\n}\n\nreturn msg;",
+        "func": "let buffer_size = 2;\nlet max_change_mmps = 5;\n\n// get global variable name\nlet var_name = msg.dev_id + '_depth_grad_buffer';\n\n// read msg\nconst {fields: {depth_filt_mm}, timestamp} = msg.payload[0];\nif(depth_filt_mm == undefined) return msg;\nlet depth_val = parseInt(depth_filt_mm);\nlet depth_time = parseFloat(timestamp);\n\nif(isNaN(depth_val) || isNaN(depth_time)) {\n    return msg;\n}\n\n// update time buffer\nif (flow.get(var_name) == undefined){ \n    flow.set(var_name, []);\n}\nvar depths = flow.get(var_name);\nwhile (depths.length >= buffer_size){\n    depths.shift(); \n}\ndepths.push([depth_val, depth_time]);\nif(depths.length < buffer_size) { \n    return msg; \n}\n\n// get the rate of change of depth\nlet [[depth1, t1], [depth2, t2]] = depths;\nlet dd = depth2 - depth1;\nlet dt = (t2 - t1) / 1000.0;\nddepth_dt = dd / Math.max(dt, 0.001);\nif(ddepth_dt > max_change_mmps) {\n    depths[1][0] = depth1;\n    node.warn(`gradient filter ${dd} in ${dt}s ∆mm/s=${ddepth_dt}`)\n    msg.payload[0].fields.depth_filt_mm = depth1+\"i\";\n}\nif(isNaN(msg.payload[0].fields.depth_filt_mm)) {\n    node.warn(msg.payload[0].fields.depth_filt_mm);   \n}\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1445,6 +1455,23 @@
         ]
     },
     {
+        "id": "a53e22633b368005",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "func": "\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
         "id": "a333bbcff1929612",
         "type": "inject",
         "z": "e3941d68335018ed",
@@ -1490,7 +1517,8 @@
         "y": 40,
         "wires": [
             [
-                "cb2e8564e10f832a"
+                "cb2e8564e10f832a",
+                "91c134739839b339"
             ]
         ]
     },
@@ -1540,7 +1568,8 @@
         "y": 40,
         "wires": [
             [
-                "c53d8aedbedb0c01"
+                "c53d8aedbedb0c01",
+                "726429c749c0b0b5"
             ]
         ]
     },
@@ -1581,7 +1610,8 @@
         "y": 140,
         "wires": [
             [
-                "bdb138bb6fe7fc89"
+                "bdb138bb6fe7fc89",
+                "91c134739839b339"
             ]
         ]
     },
@@ -1650,7 +1680,8 @@
         "y": 220,
         "wires": [
             [
-                "050c9b632ed81f5d"
+                "050c9b632ed81f5d",
+                "726429c749c0b0b5"
             ]
         ]
     },
@@ -1669,6 +1700,38 @@
         "bucket": "floodnet-live",
         "x": 300,
         "y": 220,
+        "wires": []
+    },
+    {
+        "id": "726429c749c0b0b5",
+        "type": "debug",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1210,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "91c134739839b339",
+        "type": "debug",
+        "z": "e3941d68335018ed",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1090,
+        "y": 200,
         "wires": []
     },
     {
@@ -1719,7 +1782,8 @@
         "y": 20,
         "wires": [
             [
-                "62f132ed4b7660a9"
+                "62f132ed4b7660a9",
+                "3582eb8444820738"
             ]
         ]
     },
@@ -2033,8 +2097,8 @@
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 370,
-        "y": 640,
+        "x": 390,
+        "y": 760,
         "wires": [
             [
                 "f9137c59125d3c0d"
@@ -2062,8 +2126,8 @@
         "topic": "",
         "payload": "[\t   [40.680092,-74.014416],\t   [40.676195,-73.986974],\t   [40.598504,-73.970988],\t   [40.575299,-73.996754],\t   [40.653567,-73.923218],\t   [40.657421,-73.830684],\t   [40.611045,-73.821752],\t   [40.714464,-73.749413],\t   [40.683750,-73.890956],\t   [40.769089,-73.925311],\t   [40.774001,-73.823847],\t   [40.594925,-74.089129],\t   [40.533894,-74.197005],\t   [40.613171,-74.159901],\t   [40.716077,-74.007504],\t   [40.724654,-73.975840],\t   [40.802544,-73.948427],\t   [40.865397,-73.923453],\t   [40.820639,-73.913116],\t   [40.829500,-73.859615],\t   [40.882832,-73.851669],\t   [40.846075,-73.787256],\t   [40.775942,-73.872940]\t]",
         "payloadType": "jsonata",
-        "x": 140,
-        "y": 520,
+        "x": 160,
+        "y": 640,
         "wires": [
             [
                 "410c903622f6c8e2"
@@ -2085,8 +2149,8 @@
                 "type": "msg"
             }
         ],
-        "x": 210,
-        "y": 760,
+        "x": 230,
+        "y": 880,
         "wires": [
             [
                 "51effb339ea4f74e"
@@ -2104,11 +2168,12 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 740,
-        "y": 680,
+        "x": 760,
+        "y": 800,
         "wires": [
             [
-                "2ea12566e4a0ddc7"
+                "2ea12566e4a0ddc7",
+                "634030652944940b"
             ]
         ]
     },
@@ -2126,8 +2191,8 @@
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 610,
-        "y": 580,
+        "x": 630,
+        "y": 700,
         "wires": [
             [
                 "e45925d81c5ddfda"
@@ -2145,8 +2210,8 @@
         "arraySpltType": "len",
         "stream": false,
         "addname": "",
-        "x": 130,
-        "y": 640,
+        "x": 150,
+        "y": 760,
         "wires": [
             [
                 "8aa86b86eaddc827"
@@ -2170,8 +2235,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 180,
-        "y": 700,
+        "x": 200,
+        "y": 820,
         "wires": [
             [
                 "e8f6d2b22d197f13"
@@ -2197,8 +2262,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 510,
-        "y": 760,
+        "x": 530,
+        "y": 880,
         "wires": [
             [
                 "f03ba767c129f69b"
@@ -2224,8 +2289,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 690,
-        "y": 640,
+        "x": 710,
+        "y": 760,
         "wires": [
             [
                 "0193d0cc4010e60f"
@@ -2251,8 +2316,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 310,
-        "y": 580,
+        "x": 330,
+        "y": 700,
         "wires": [
             [
                 "4c44e3abc4fcd1eb"
@@ -2272,8 +2337,8 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-live",
-        "x": 1010,
-        "y": 640,
+        "x": 1030,
+        "y": 760,
         "wires": []
     },
     {
@@ -2291,8 +2356,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 430,
-        "y": 700,
+        "x": 450,
+        "y": 820,
         "wires": [
             [
                 "20fd99b272aaccde"
@@ -2356,6 +2421,70 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "c772df430fe6c58c",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 790,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "23e895c53f799791",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 750,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "634030652944940b",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1050,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "3582eb8444820738",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 550,
+        "y": 440,
+        "wires": []
     },
     {
         "id": "9637d78579cb1b2b",
@@ -6932,6 +7061,124 @@
         "wires": [
             [
                 "9ca3c022c6a0eb66"
+            ]
+        ]
+    },
+    {
+        "id": "932bf5c3c09cdccd",
+        "type": "exec",
+        "z": "41b751a153893032",
+        "command": "python --version",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 520,
+        "y": 380,
+        "wires": [
+            [
+                "12e5ae592c04939f"
+            ],
+            [
+                "12e5ae592c04939f"
+            ],
+            [
+                "12e5ae592c04939f"
+            ]
+        ]
+    },
+    {
+        "id": "df389beab2fcffc9",
+        "type": "inject",
+        "z": "41b751a153893032",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 400,
+        "wires": [
+            [
+                "932bf5c3c09cdccd"
+            ]
+        ]
+    },
+    {
+        "id": "12e5ae592c04939f",
+        "type": "debug",
+        "z": "41b751a153893032",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 850,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "bfa859424e47e623",
+        "type": "http in",
+        "z": "50d1ba0730ca6bda",
+        "name": "autocomplete",
+        "url": "/autocomplete",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 260,
+        "wires": [
+            [
+                "0fa27aace73d9c02"
+            ]
+        ]
+    },
+    {
+        "id": "be1baf7d3ea7f061",
+        "type": "http response",
+        "z": "50d1ba0730ca6bda",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 490,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "0fa27aace73d9c02",
+        "type": "function",
+        "z": "50d1ba0730ca6bda",
+        "name": "",
+        "func": "msg.payload = {result: [\"fn-0012\", \"fn-0013\", \"fn-0014\"]};\nmsg.headers = {};\nmsg.headers['content-type'] = 'application/json';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 260,
+        "wires": [
+            [
+                "be1baf7d3ea7f061"
             ]
         ]
     }
