@@ -7,14 +7,6 @@
         "info": ""
     },
     {
-        "id": "e3941d68335018ed",
-        "type": "tab",
-        "label": "Gateway ingestion",
-        "disabled": false,
-        "info": "",
-        "env": []
-    },
-    {
         "id": "59b6ea3e0dab2122",
         "type": "tab",
         "label": "Weather ingestion",
@@ -34,6 +26,14 @@
         "id": "54e1edf44c387788",
         "type": "tab",
         "label": "Sensor calibration",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e3941d68335018ed",
+        "type": "tab",
+        "label": "Gateway ingestion",
         "disabled": false,
         "info": "",
         "env": []
@@ -74,6 +74,14 @@
         "id": "50d1ba0730ca6bda",
         "type": "tab",
         "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "10294d398bc578d5",
+        "type": "tab",
+        "label": "Flow 2",
         "disabled": false,
         "info": "",
         "env": []
@@ -627,7 +635,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 70,
+        "x": 90,
         "y": 20,
         "wires": [
             [
@@ -647,8 +655,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 290,
-        "y": 80,
+        "x": 490,
+        "y": 120,
         "wires": [
             [
                 "c6d0a64faa67e085"
@@ -659,18 +667,17 @@
         "id": "4f19e58b65fd28a1",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "Payload decoder - flood sensor",
-        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag != 255) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    var night_median = msg.night_median;\n    if (night_median !== undefined){\n        var depth = -distance + night_median;\n        if(isNaN(depth)) {\n            node.warn(\n                `${msg.deployment_id}: ${depth} is NaN. ${night_median} - ${distance}`);\n        }\n        fields['depth_raw_mm'] = depth + 'i';\n        \n        if (depth <= 10){\n            depth = 0;\n        }\n        if(depth > night_median) {\n            depth = undefined;\n        }\n        \n        // var depthi = depth !== undefined ? depth + 'i' : undefined;\n        if(depth !== undefined) {\n            fields['depth_filt_mm'] = depth + 'i';\n            fields['depth_proc_mm'] = depth + 'i';\n        }\n        \n    }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
+        "name": "flood sensor decode",
+        "func": "var [ fields, tags, b ] = msg.payload.data;\ntags['deployment_id'] = msg.deployment_id;\n\nvar errorFlag = b[0];\nif (errorFlag != 255) {  // Regular Payload\n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery -> mV -> V\n    fields['batt_v'] = ((b[2] << 8) | b[1]) / 1000;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance;\n    \n    // depth\n    var night_median = msg.night_median;\n    if (night_median !== undefined){\n        var depth = night_median - distance;\n        if(isNaN(depth)) {\n            node.warn(`${msg.deployment_id}: ${depth} is NaN. ${night_median} - ${distance}`);\n        }\n        fields['depth_raw_mm'] = depth;\n        \n        if (depth <= 10){\n            depth = 0;\n        }\n        if(depth > night_median) {\n            depth = undefined;\n        }\n        \n        if(depth !== undefined) {\n            fields['depth_filt_mm'] = depth;\n            fields['depth_proc_mm'] = depth;\n        }\n        \n    }\n    \n    // extra fields\n    if (b.length > 5){\n        // temperature\n        fields['temp_c'] = ((b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5]) / 100;\n        // pressure\n        fields['pres_mb'] = ((((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7]) / 100;\n        // altitude\n        fields['alt_m'] = ((b[12] << 8) | b[11]) / 100;\n        // humidity\n        fields['humid_percen'] = ((b[14] << 8) | b[13]) / 100;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'flood-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }\n];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 240,
+        "x": 360,
+        "y": 440,
         "wires": [
             [
-                "3c0e39c427c2e21d",
                 "62a33a2d546d7c2c"
             ]
         ]
@@ -679,7 +686,7 @@
         "id": "9426b45005b4832d",
         "type": "switch",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "sensor type",
         "property": "app_type",
         "propertyType": "msg",
         "rules": [
@@ -708,7 +715,7 @@
         "repair": false,
         "outputs": 4,
         "x": 110,
-        "y": 300,
+        "y": 320,
         "wires": [
             [
                 "4f19e58b65fd28a1",
@@ -729,15 +736,15 @@
         "id": "a4c825bdcb08158d",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "Payload decoder - gw rain gauge",
-        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nvar b = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag < 253) {\n\n    // Regular Payload\n    var acc = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    var eventAcc = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    var totalAcc = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    var rInt = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    var units;\n    \n    fields['acc_mm'] = acc;\n    fields['event_acc_mm'] = eventAcc;\n    fields['total_acc_mm'] = totalAcc;\n    fields['r_int_hr_mm'] = rInt;\n      let unit = String.fromCharCode(b[16]);\n      if (unit == 'm'){\n        units = 'mm';\n      } else {\n        units = 'in';\n      }\n      tags['acc_unit'] = '' + units;\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n    ];\n    \nreturn msg;",
+        "name": "gw rain gauge decode",
+        "func": "var [ fields, tags, b ] = msg.payload.data;\ntags['deployment_id'] = msg.deployment_id;\n\nvar errorFlag = b[0];\nif (errorFlag < 253) {  // Regular Payload    \n    fields['acc_mm'] = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    fields['event_acc_mm'] = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    fields['total_acc_mm'] = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    fields['r_int_hr_mm'] = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    let unit = String.fromCharCode(b[16]);\n    tags['acc_unit'] = '' + (unit == 'm' ? 'mm' : 'in');\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n];    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 400,
-        "y": 320,
+        "x": 360,
+        "y": 360,
         "wires": [
             [
                 "bb0aa76cdb8fa1d0"
@@ -775,8 +782,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 370,
-        "y": 200,
+        "x": 310,
+        "y": 320,
         "wires": [
             [
                 "513fbc9cc32e5fc3"
@@ -796,8 +803,8 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-live",
-        "x": 840,
-        "y": 300,
+        "x": 960,
+        "y": 340,
         "wires": []
     },
     {
@@ -813,26 +820,26 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 550,
-        "y": 200,
+        "x": 470,
+        "y": 320,
         "wires": []
     },
     {
         "id": "c76d93addfcecc14",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "Payload decoder - tidal sensor",
-        "func": "var fields = msg.payload.data[0];\nvar tags = msg.payload.data[1];\ntags['deployment_id'] = msg.deployment_id;\nb = msg.payload.data[2];\n\nvar len = b.length;\n\nvar errorFlag = b[0];\n\nif (errorFlag < 253) {\n\n    // Regular Payload\n    \n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n    \n    // battery\n    battery = (b[2] << 8) | b[1]; // battery in centi Volts\n    battery = battery / 1000; // Convert to Volts\n    fields['batt_v'] = battery;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance + 'i';\n    \n    // depth\n    // TODO: use global var to store manually inserted MLLW value using NR GUI\n    // var night_median = global.get(tags.dev_id + '.night_median');\n    // if (night_median !== undefined){\n    //     var depth = -distance + night_median;\n    //     fields['depth_mm'] = depth;\n    // }\n    \n    if (len > 5){\n        // temperature\n        var temperature = (b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5];\n        temperature = temperature/100;\n        fields['temp_c'] = temperature;\n        \n        // pressure\n        var pressure = (((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7];\n        pressure = pressure/100;\n        fields['pres_mb'] = pressure;\n        \n        // altitude\n        var altitude = (b[12] << 8) | b[11];\n        altitude = altitude/100;\n        fields['alt_m'] = altitude;\n        \n        // humidity\n        var humidity = (b[14] << 8) | b[13];\n        humidity = humidity/100;\n        fields['humid_percen'] = humidity;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'tidal-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }];\n    \nreturn msg;",
+        "name": "tidal sensor decode",
+        "func": "var [ fields, tags, b ] = msg.payload.data;\ntags['deployment_id'] = msg.deployment_id;\n\nvar errorFlag = b[0];\nif (errorFlag < 253) {  // Regular Payload\n    // Converting Error Flag bits\n    tags['error_flag'] = '' + errorFlag % 2;\n\n    // battery -> mV -> V\n    fields['batt_v'] = ((b[2] << 8) | b[1]) / 1000;\n    \n    // distance\n    distance = (b[4] << 8) | b[3];\n    fields['dist_mm'] = distance;\n    \n    // depth\n    // TODO: use global var to store manually inserted MLLW value using NR GUI\n    // var night_median = global.get(tags.dev_id + '.night_median');\n    // if (night_median !== undefined){\n    //     var depth = -distance + night_median;\n    //     fields['depth_mm'] = depth;\n    // }\n    \n    if (b.length > 5){\n        // temperature\n        fields['temp_c'] = ((b[6] & 0x80 ? 0xFFFF<<16 : 0) | b[6]<<8 | b[5]) / 100;\n        // pressure\n        fields['pres_mb'] = ((((b[10]<<24) | (b[9]<<16)) | (b[8]<<8)) | b[7]) / 100;\n        // altitude\n        fields['alt_m'] = ((b[12] << 8) | b[11]) / 100;\n        // humidity\n        fields['humid_percen'] = ((b[14] << 8) | b[13]) / 100;\n    }\n}\n\nmsg.payload = [\n    {\n        measurement: 'tidal-sensor',\n        fields,\n        tags,\n        timestamp: msg.payload['ts']\n    }\n];\n    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 280,
+        "x": 350,
+        "y": 400,
         "wires": [
             [
-                "bb0aa76cdb8fa1d0"
+                "cc73a08cd9aa98f3"
             ]
         ]
     },
@@ -849,7 +856,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 70,
+        "x": 90,
         "y": 80,
         "wires": [
             [
@@ -871,7 +878,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 70,
+        "x": 90,
         "y": 140,
         "wires": [
             [
@@ -893,8 +900,8 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-lab",
-        "x": 840,
-        "y": 340,
+        "x": 960,
+        "y": 380,
         "wires": []
     },
     {
@@ -910,15 +917,15 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-test",
-        "x": 840,
-        "y": 380,
+        "x": 960,
+        "y": 420,
         "wires": []
     },
     {
         "id": "bb0aa76cdb8fa1d0",
         "type": "switch",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "app",
         "property": "app_name",
         "propertyType": "msg",
         "rules": [
@@ -941,8 +948,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 670,
-        "y": 300,
+        "x": 770,
+        "y": 380,
         "wires": [
             [
                 "59c384dba7c30e0d",
@@ -967,8 +974,8 @@
         "sendError": false,
         "encoding": "none",
         "allProps": false,
-        "x": 500,
-        "y": 80,
+        "x": 700,
+        "y": 120,
         "wires": [
             [
                 "7daebca69f042623"
@@ -979,15 +986,15 @@
         "id": "56112e38ee71332a",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "deploy_id & night_median",
         "func": "var dev_list = [];\nvar dep_list = [];\nvar night_median_list = [];\nmsg.payload.forEach((element) => {\n  dev_list.push(element.col1);\n  dep_list.push(element.col2);\n  night_median_list.push(element.col3);\n});\n\nvar dev_idx = dev_list.lastIndexOf(msg.dev_id);\n\nif(dev_idx != -1){\n    msg.deployment_id = dep_list[dev_idx];\n    msg.night_median = night_median_list[dev_idx];\n}else{\n    msg.deployment_id = undefined;\n}\n\nmsg.payload = msg.orig_payload;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 780,
-        "y": 80,
+        "x": 1030,
+        "y": 120,
         "wires": [
             [
                 "9426b45005b4832d"
@@ -1009,8 +1016,8 @@
         "strings": true,
         "include_empty_strings": "",
         "include_null_values": "",
-        "x": 650,
-        "y": 80,
+        "x": 850,
+        "y": 120,
         "wires": [
             [
                 "56112e38ee71332a"
@@ -1021,15 +1028,15 @@
         "id": "d1f0313a1241e95a",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "Fieldkit POST",
         "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nif (msg.payload[0].measurement != \"flood-sensor\"){\n    return undefined;\n}\n\nmsg.payload[0].fields.dist_mm = parseInt(msg.payload[0].fields.dist_mm);\nmsg.payload[0].fields.lora_freq_hz = parseInt(msg.payload[0].fields.lora_freq_hz);\nmsg.payload[0].fields.f_cnt = parseInt(msg.payload[0].fields.f_cnt);\nmsg.payload[0].fields.depth_mm = parseInt(msg.payload[0].fields.depth_mm);\nmsg.payload[0].fields.depth_raw_mm = parseInt(msg.payload[0].fields.depth_raw_mm);\nmsg.payload[0].fields.depth_filt_mm = parseInt(msg.payload[0].fields.depth_filt_mm);\nmsg.payload[0].fields.depth_proc_mm = parseInt(msg.payload[0].fields.depth_proc_mm);\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 940,
-        "y": 220,
+        "x": 980,
+        "y": 300,
         "wires": [
             [
                 "2022baa0e88d34cf"
@@ -1051,7 +1058,7 @@
         "authType": "",
         "senderr": false,
         "x": 1150,
-        "y": 220,
+        "y": 300,
         "wires": [
             [
                 "f56074e0a37d1706"
@@ -1062,15 +1069,15 @@
         "id": "f56074e0a37d1706",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "HTTP Status",
         "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1320,
-        "y": 220,
+        "x": 1310,
+        "y": 300,
         "wires": [
             []
         ]
@@ -1088,8 +1095,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 80,
-        "y": 220,
+        "x": 100,
+        "y": 200,
         "wires": [
             [
                 "2c66b65b4104fc3f",
@@ -1108,8 +1115,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 260,
-        "y": 140,
+        "x": 280,
+        "y": 200,
         "wires": [
             [
                 "d4dd1fb1.22cae"
@@ -1120,7 +1127,7 @@
         "id": "013cba75aa7ab39c",
         "type": "switch",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
+        "name": "downlink_nack",
         "property": "msg.payload.downlink_nack",
         "propertyType": "msg",
         "rules": [
@@ -1133,12 +1140,11 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 250,
+        "x": 460,
         "y": 40,
         "wires": [
             [
-                "4e12b12b872ef0fe",
-                "976dac85d87c8ddd"
+                "4e12b12b872ef0fe"
             ]
         ]
     },
@@ -1155,7 +1161,7 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 410,
+        "x": 630,
         "y": 40,
         "wires": []
     },
@@ -1165,8 +1171,8 @@
         "z": "b8f9c9a92652ae8e",
         "name": "TODO: add filter function using Jatins model - need 3 points",
         "info": "",
-        "x": 1020,
-        "y": 160,
+        "x": 1480,
+        "y": 60,
         "wires": []
     },
     {
@@ -1175,25 +1181,8 @@
         "z": "b8f9c9a92652ae8e",
         "name": "TODO: add nearest/best tidal guage ID to each coastal payload",
         "info": "",
-        "x": 1170,
-        "y": 320,
-        "wires": []
-    },
-    {
-        "id": "4b04979e74856e95",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1130,
-        "y": 500,
+        "x": 1490,
+        "y": 100,
         "wires": []
     },
     {
@@ -1207,7 +1196,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 460,
+        "x": 760,
         "y": 540,
         "wires": [
             [
@@ -1216,241 +1205,21 @@
         ]
     },
     {
-        "id": "d65a478529277c5b",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1230,
-        "y": 600,
-        "wires": []
-    },
-    {
-        "id": "a3189571d64323b5",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1090,
-        "y": 80,
-        "wires": []
-    },
-    {
         "id": "62a33a2d546d7c2c",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "grad filter",
-        "func": "let buffer_size = 2;\nlet max_change_mmps = 5;\n\n// get global variable name\nlet var_name = msg.dev_id + '_depth_grad_buffer';\n\n// read msg\nconst {fields: {depth_filt_mm}, timestamp} = msg.payload[0];\nif(depth_filt_mm == undefined) return msg;\nlet depth_val = parseInt(depth_filt_mm);\nlet depth_time = parseFloat(timestamp);\n\nif(isNaN(depth_val) || isNaN(depth_time)) {\n    return msg;\n}\n\n// update time buffer\nif (flow.get(var_name) == undefined){ \n    flow.set(var_name, []);\n}\nvar depths = flow.get(var_name);\nwhile (depths.length >= buffer_size){\n    depths.shift(); \n}\ndepths.push([depth_val, depth_time]);\nif(depths.length < buffer_size) { \n    return msg; \n}\n\n// get the rate of change of depth\nlet [[depth1, t1], [depth2, t2]] = depths;\nlet dd = depth2 - depth1;\nlet dt = (t2 - t1) / 1000.0;\nddepth_dt = dd / Math.max(dt, 0.001);\nif(ddepth_dt > max_change_mmps) {\n    depths[1][0] = depth1;\n    node.warn(`gradient filter ${dd} in ${dt}s ∆mm/s=${ddepth_dt}`)\n    msg.payload[0].fields.depth_filt_mm = depth1+\"i\";\n}\nif(isNaN(msg.payload[0].fields.depth_filt_mm)) {\n    node.warn(msg.payload[0].fields.depth_filt_mm);   \n}\nreturn msg;",
+        "func": "let buffer_size = 2;\nlet max_change_mmps = 2.11667;\n\n// get global variable name\nlet var_name = msg.dev_id + '_depth_grad_buffer';\n\n// read msg\nconst {fields: {depth_filt_mm}, timestamp} = msg.payload[0];\nlet depth_val = parseInt(depth_filt_mm);\nlet depth_time = parseFloat(timestamp);\nif(isNaN(depth_val) || isNaN(depth_time)) {\n    return msg;\n}\n\n// update time buffer\nif (flow.get(var_name) == undefined){ \n    flow.set(var_name, []);\n}\nvar depths = flow.get(var_name);\nwhile (depths.length >= buffer_size){\n    depths.shift(); \n}\ndepths.push([depth_val, depth_time]);\nif(depths.length < buffer_size) { \n    return msg; \n}\n\n// get the rate of change of depth\nlet [[depth1, t1], [depth2, t2]] = depths;\nlet dd = depth2 - depth1;\nlet dt = (t2 - t1) / 1000.0;\nddepth_dt = dd / Math.max(dt, 0.001);\nif(ddepth_dt > max_change_mmps) {\n    depths[1][0] = depth1;\n    node.warn(`gradient filter ${dd} in ${dt}s ∆mm/s=${ddepth_dt}`)\n    msg.payload[0].fields.depth_proc_mm = depth1+\"i\";\n}\nif(isNaN(parseFloat(msg.payload[0].fields.depth_proc_mm))) {\n    node.warn(msg.payload[0].fields.depth_proc_mm);   \n}\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 480,
+        "x": 440,
         "y": 480,
         "wires": [
             [
-                "bb0aa76cdb8fa1d0"
-            ]
-        ]
-    },
-    {
-        "id": "a6846eadefcf63cd",
-        "type": "inject",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "5",
-        "payloadType": "num",
-        "x": 150,
-        "y": 640,
-        "wires": [
-            [
-                "e2009fb501734907"
-            ]
-        ]
-    },
-    {
-        "id": "98c21011d7eb1821",
-        "type": "inject",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "0",
-        "payloadType": "num",
-        "x": 150,
-        "y": 720,
-        "wires": [
-            [
-                "e2009fb501734907"
-            ]
-        ]
-    },
-    {
-        "id": "2d8189828b0ef9b4",
-        "type": "inject",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "3",
-        "payloadType": "num",
-        "x": 150,
-        "y": 680,
-        "wires": [
-            [
-                "e2009fb501734907"
-            ]
-        ]
-    },
-    {
-        "id": "a21b4cdd69a37079",
-        "type": "inject",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "100",
-        "payloadType": "num",
-        "x": 150,
-        "y": 600,
-        "wires": [
-            [
-                "e2009fb501734907"
-            ]
-        ]
-    },
-    {
-        "id": "e2009fb501734907",
-        "type": "function",
-        "z": "b8f9c9a92652ae8e",
-        "name": "# > payload",
-        "func": "msg.payload = [\n    {\n        timestamp: Date.now(), \n        fields: {depth_filt_mm:  msg.payload}\n    }    \n]\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 330,
-        "y": 660,
-        "wires": [
-            [
-                "6dd4ec1a4a59216c"
-            ]
-        ]
-    },
-    {
-        "id": "976dac85d87c8ddd",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 630,
-        "y": 40,
-        "wires": []
-    },
-    {
-        "id": "6265ec2a638b22d1",
-        "type": "debug",
-        "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload[0].fields.depth_filt_mm",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 750,
-        "y": 660,
-        "wires": []
-    },
-    {
-        "id": "6dd4ec1a4a59216c",
-        "type": "function",
-        "z": "b8f9c9a92652ae8e",
-        "name": "grad filter",
-        "func": "let buffer_size = 2;\nlet max_change_mmps = 5;\n\n// get global variable name\nlet var_name = msg.dev_id + '_depth_grad_buffer';\n\n// read msg\nconst {fields: {depth_filt_mm}, timestamp} = msg.payload[0];\nif(depth_filt_mm == undefined) return msg;\nlet depth_val = parseInt(depth_filt_mm);\nlet depth_time = parseFloat(timestamp);\n\n// update time buffer\nif (flow.get(var_name) == undefined){ \n    flow.set(var_name, []);\n}\nvar depths = flow.get(var_name);\nwhile (depths.length >= buffer_size){\n    depths.shift(); \n}\ndepths.push([depth_val, depth_time]);\nif(depths.length < buffer_size) { \n    return msg; \n}\n\n// get the rate of change of depth\nlet [[depth1, t1], [depth2, t2]] = depths;\nlet dd = depth2 - depth1;\nlet dt = (t2 - t1) / 1000.0;\nddepth_dt = dd / Math.max(dt, 0.001);\nif(ddepth_dt > max_change_mmps) {\n    depths[1][0] = depth1;\n    node.warn(`gradient filter ${dd} in ${dt}s ∆mm/s=${ddepth_dt}`)\n    msg.payload[0].fields.depth_filt_mm = depth1+\"i\";\n}\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 660,
-        "wires": [
-            [
-                "6265ec2a638b22d1"
+                "cc73a08cd9aa98f3"
             ]
         ]
     },
@@ -1465,11 +1234,1749 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 660,
+        "x": 920,
         "y": 540,
         "wires": [
             []
         ]
+    },
+    {
+        "id": "af85e407ac5a7ba1",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload[0].fields.depth_proc_mm",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1050,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "cc73a08cd9aa98f3",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "add i to ints",
+        "func": "var fields = msg.payload[0].fields;\n\n\nconst fixInt = (k) => {\n    const v = fields[k];\n    const i = parseInt(v);\n    if(!isNaN(i)) {\n        fields[k] = i + 'i';  \n    }\n}\n\nif(fields) {\n    fixInt('dist_mm');\n    fixInt('depth_raw_mm');\n    fixInt('depth_filt_mm');\n    fixInt('depth_proc_mm'); \n}\n\n\n\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 420,
+        "wires": [
+            [
+                "bb0aa76cdb8fa1d0"
+            ]
+        ]
+    },
+    {
+        "id": "62f132ed4b7660a9",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "MN request",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://api.nysmesonet.org/data/dynserv/coned/5min/nyc/{{{timerange}}}?{{{payload}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 490,
+        "y": 140,
+        "wires": [
+            [
+                "b84c28e164baf1e6"
+            ]
+        ]
+    },
+    {
+        "id": "4f87538ceb946c0d",
+        "type": "inject",
+        "z": "59b6ea3e0dab2122",
+        "name": "Inject MN station URLs",
+        "props": [
+            {
+                "p": "timerange",
+                "v": "$join(\t   [\t       $fromMillis($millis() - 240000),\t       $fromMillis($millis())\t   ],\t   '/'\t)",
+                "vt": "jsonata"
+            },
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "$join(\t   [\t       'variables[]=tair@degC',\t       'variables[]=tslo@degC',\t       'variables[]=relh@percent',\t       'variables[]=precip:incremental@mm',\t       'variables[]=precip@mm',\t       'variables[]=precip_local@mm',\t       'variables[]=precip_total@mm',\t       'variables[]=precip_max_intensity@mm/min',\t       'variables[]=winds_sonic@m/s',\t       'variables[]=srad@W/m^2',\t       'variables[]=pres@millibars',\t       'variables[]=snow_depth@mm',\t       'variables[]=lat@degrees',\t       'variables[]=lon@degrees'\t   ],\t   '&'\t)",
+        "payloadType": "jsonata",
+        "x": 210,
+        "y": 200,
+        "wires": [
+            [
+                "62f132ed4b7660a9"
+            ]
+        ]
+    },
+    {
+        "id": "bf77b6cbe5bb5efb",
+        "type": "csv",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "sep": ",",
+        "hdrin": true,
+        "hdrout": "none",
+        "multi": "mult",
+        "ret": "\\n",
+        "temp": "",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 470,
+        "y": 200,
+        "wires": [
+            [
+                "c76e21c56c558be6"
+            ]
+        ]
+    },
+    {
+        "id": "b84c28e164baf1e6",
+        "type": "switch",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nempty"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 650,
+        "y": 140,
+        "wires": [
+            [
+                "bf77b6cbe5bb5efb"
+            ]
+        ]
+    },
+    {
+        "id": "c76e21c56c558be6",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "Check for empty",
+        "func": "cnt = 0;\n\nfor (const station of msg.payload){\n    cnt += Object.keys(station).length;\n}\n\nif (cnt == msg.payload.length * 4)\n    return '';\nelse\n    return msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 200,
+        "wires": [
+            [
+                "3f60b54328ff9718"
+            ]
+        ]
+    },
+    {
+        "id": "3f60b54328ff9718",
+        "type": "switch",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nempty"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 790,
+        "y": 200,
+        "wires": [
+            [
+                "ed9c3a5a7b9aedf2"
+            ]
+        ]
+    },
+    {
+        "id": "742bda0e4b0972e6",
+        "type": "inject",
+        "z": "59b6ea3e0dab2122",
+        "name": "Inject NWS station URLs",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[\t   'https://api.weather.gov/stations/KJFK/observations/latest',\t   'https://api.weather.gov/stations/KLGA/observations/latest',\t   'https://api.weather.gov/stations/KNYC/observations/latest'\t]",
+        "payloadType": "jsonata",
+        "x": 210,
+        "y": 240,
+        "wires": [
+            [
+                "567665bec1f6ee11"
+            ]
+        ]
+    },
+    {
+        "id": "567665bec1f6ee11",
+        "type": "split",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": true,
+        "addname": "",
+        "x": 410,
+        "y": 240,
+        "wires": [
+            [
+                "49ad4015de5d0710"
+            ]
+        ]
+    },
+    {
+        "id": "bba0e1b1684e109b",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "NWS request",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 770,
+        "y": 240,
+        "wires": [
+            [
+                "4c120bcceeb78769"
+            ]
+        ]
+    },
+    {
+        "id": "49ad4015de5d0710",
+        "type": "change",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "url",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 590,
+        "y": 240,
+        "wires": [
+            [
+                "bba0e1b1684e109b"
+            ]
+        ]
+    },
+    {
+        "id": "4c120bcceeb78769",
+        "type": "switch",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "property": "payload['properties']['rawMessage']",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nnull"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 910,
+        "y": 240,
+        "wires": [
+            [
+                "e5a534afcfdc4833"
+            ]
+        ]
+    },
+    {
+        "id": "4871d24c8081c6c1",
+        "type": "influxdb batch",
+        "z": "59b6ea3e0dab2122",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "NWS weather data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-live",
+        "x": 1370,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "e5a534afcfdc4833",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "Setup NWS payload",
+        "func": "var data_payload = msg.payload['properties'];\nvar station_id = data_payload['rawMessage'].slice(0,4).trim().toLowerCase();\nvar sensor_id = 'nws-' + station_id;\nvar location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['timestamp']);\n// Quality control checks\n// https://madis.ncep.noaa.gov/madis_sfc_qc_notes.shtml\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temperature']['value'],\n            wind_dir_deg: data_payload['windDirection']['value'],\n            wind_speed_kmh: data_payload['windSpeed']['value'],\n            visibility: data_payload['visibility']['value'],\n            baro_pres_pa: data_payload['barometricPressure']['value'],\n            precip_last_hour_mm: data_payload['precipitationLastHour']['value'] * 1000,\n            relhumid_percent: +data_payload['relativeHumidity']['value'],\n            windchill_c: +data_payload['windChill']['value']\n        };\n        \nvar tags = {\n            weather_group: 'nws',\n            sensor_id: sensor_id,\n            lat: location_info['coordinates'][1],\n            lng: location_info['coordinates'][0],\n            sensor_types: 'temp,humid,precip,pres,wind',\n            sensor_name: 'NWS ' + station_id.slice(1,4).toUpperCase() + ' Weather station (' + station_id.toUpperCase() + ')'\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'weather',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 240,
+        "wires": [
+            [
+                "4871d24c8081c6c1"
+            ]
+        ]
+    },
+    {
+        "id": "9f175b1da3175ea9",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "Setup MN payload",
+        "func": "var data_payload = msg.payload;\nvar station_id = data_payload['station'];\nvar sensor_id = 'nyc-micronet-' + station_id.toLowerCase();\n// var location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['datetime']);\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temp_2m [degC]'] || undefined,\n            temp_slow_c: data_payload['tslo [degC]'] || undefined,\n            wind_speed_kmh: (data_payload['avg_wind_speed_sonic [m/s]'] * 3.6) || undefined,\n            baro_pres_pa: (data_payload['station_pressure [millibars]'] * 100) || undefined,\n            precip_increm_mm: data_payload['precip_incremental [mm]'] || undefined,\n            max_precip_last_5min_mm_per_min: data_payload['precip_max_intensity [mm/min]'] || undefined,\n            relhumid_percent: data_payload['relative_humidity [percent]'] || undefined,\n            wind_dir_deg: data_payload['wind_direction_sonic [degrees]'] || undefined,\n            solar_insol_wm2: data_payload['solar_insolation [W/m^2]'] || undefined,\n            snow_depth_mm: data_payload['snow_depth [mm]'] || undefined\n        };\n        \nvar tags = {\n            weather_group: 'micronet',\n            sensor_id: sensor_id,\n            lat: data_payload['lat [degrees]'],\n            lng: data_payload['lon [degrees]'],\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: 'NYC Micronet weather station (' + station_id + ')'\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'weather',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1090,
+        "y": 200,
+        "wires": [
+            [
+                "51f38eac8def364f",
+                "ceac54f342a9e889"
+            ]
+        ]
+    },
+    {
+        "id": "ed9c3a5a7b9aedf2",
+        "type": "split",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 910,
+        "y": 200,
+        "wires": [
+            [
+                "9f175b1da3175ea9"
+            ]
+        ]
+    },
+    {
+        "id": "51f38eac8def364f",
+        "type": "influxdb batch",
+        "z": "59b6ea3e0dab2122",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "NYC Micronet weather data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-live",
+        "x": 1400,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "4c44e3abc4fcd1eb",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "Open Weather API",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/2.5/onecall?lat={{{lat_lon.0}}}&lon={{{lat_lon.1}}}&exclude=hourly,daily&appid={{{appid}}}&units=metric",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 510,
+        "y": 400,
+        "wires": [
+            [
+                "f9137c59125d3c0d"
+            ]
+        ]
+    },
+    {
+        "id": "c9f27f5d47a10a45",
+        "type": "inject",
+        "z": "59b6ea3e0dab2122",
+        "name": "Inject OWM locations",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3480",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[\t   [40.680092,-74.014416],\t   [40.676195,-73.986974],\t   [40.598504,-73.970988],\t   [40.575299,-73.996754],\t   [40.653567,-73.923218],\t   [40.657421,-73.830684],\t   [40.611045,-73.821752],\t   [40.714464,-73.749413],\t   [40.683750,-73.890956],\t   [40.769089,-73.925311],\t   [40.774001,-73.823847],\t   [40.594925,-74.089129],\t   [40.533894,-74.197005],\t   [40.613171,-74.159901],\t   [40.716077,-74.007504],\t   [40.724654,-73.975840],\t   [40.802544,-73.948427],\t   [40.865397,-73.923453],\t   [40.820639,-73.913116],\t   [40.829500,-73.859615],\t   [40.882832,-73.851669],\t   [40.846075,-73.787256],\t   [40.775942,-73.872940]\t]",
+        "payloadType": "jsonata",
+        "x": 220,
+        "y": 280,
+        "wires": [
+            [
+                "410c903622f6c8e2"
+            ]
+        ]
+    },
+    {
+        "id": "e8f6d2b22d197f13",
+        "type": "credentials",
+        "z": "59b6ea3e0dab2122",
+        "name": "OWAPI and G key store",
+        "props": [
+            {
+                "value": "appid",
+                "type": "msg"
+            },
+            {
+                "value": "gapikey",
+                "type": "msg"
+            }
+        ],
+        "x": 270,
+        "y": 440,
+        "wires": [
+            [
+                "51effb339ea4f74e"
+            ]
+        ]
+    },
+    {
+        "id": "0193d0cc4010e60f",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "OWM setup payload",
+        "func": "var weather_payload = msg.owm;\nvar revgeocode_payload = msg.revgeocode;\nvar meas_array = [];\nvar forecast_mins = 60;\nvar sensor_id = 'owm-' + revgeocode_payload.osm_id;\nvar sensor_name = revgeocode_payload.address.neighbourhood + ' - openweathermap.org (' + sensor_id + ')';\n\nvar rain_amnt,snow_amnt = null;\n\nif (weather_payload.current.rain){\n    rain_amnt = weather_payload.current.rain['1h'];\n}\n\nif (weather_payload.current.snow){\n    snow_amnt = weather_payload.current.snow['1h'];\n}\n\n\nvar cur_weather = {\n   measurement: 'weather',\n      fields: {\n        temp_c: weather_payload.current['temp'],\n        baro_pres_pa: weather_payload.current['pressure'] * 1000,\n        relhumid_percent: weather_payload.current['humidity'],\n        cloud_percent: weather_payload.current['clouds'],\n        wind_speed_kmh: weather_payload.current['wind_speed'] * 3.6,\n        wind_dir_deg: weather_payload.current['wind_deg'],\n        precip_last_hour_mm: rain_amnt || undefined,\n        snow_last_hour_mm: snow_amnt || undefined\n      },\n      tags:{\n        weather_group: 'open_weather_map_forecast',\n        sensor_id: sensor_id,\n        lat: weather_payload.lat,\n        lng: weather_payload.lon,\n        sensor_types: 'temp,humid,precip,pres,wind,solar',\n        sensor_name: sensor_name,\n        sensor_address_zip: revgeocode_payload.address.postcode,\n        sensor_address_borough: revgeocode_payload.address.suburb,\n        sensor_address_state: revgeocode_payload.address.state,\n        sensor_address_country: revgeocode_payload.address.country,\n        sensor_address_house_number: revgeocode_payload.address.house_number,\n        sensor_address_street: revgeocode_payload.address.road,\n        sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n      },\n      timestamp: weather_payload.current['dt'] * 1000\n};\n\nmeas_array.push(cur_weather);\n\nif (weather_payload.minutely){\n    for (var i = 0; i < forecast_mins; i++) {\n        var min_item = weather_payload.minutely[i];\n        var min_entry = {\n          measurement: 'weather',\n          fields: {\n            precip_forecast_last_min_mm: min_item['precipitation']\n          },\n          tags:{\n            weather_group: 'open_weather_map_forecast',\n            sensor_id: sensor_id,\n            lat: weather_payload.lat,\n            lng: weather_payload.lon,\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: sensor_name,\n            sensor_address_zip: revgeocode_payload.address.postcode,\n            sensor_address_borough: revgeocode_payload.address.suburb,\n            sensor_address_state: revgeocode_payload.address.state,\n            sensor_address_country: revgeocode_payload.address.country,\n            sensor_address_house_number: revgeocode_payload.address.house_number,\n            sensor_address_street: revgeocode_payload.address.road,\n            sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n          },\n          timestamp: min_item['dt'] * 1000\n        };\n        meas_array.push(min_entry);\n    }\n}\n\nmsg.payload = meas_array;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 360,
+        "wires": [
+            [
+                "2ea12566e4a0ddc7"
+            ]
+        ]
+    },
+    {
+        "id": "f03ba767c129f69b",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "Rev geocode",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://nominatim.openstreetmap.org/reverse?format=json&lat={{{lat_lon.0}}}&lon={{{lat_lon.1}}}&zoom=18&addressdetails=1",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 710,
+        "y": 360,
+        "wires": [
+            [
+                "e45925d81c5ddfda"
+            ]
+        ]
+    },
+    {
+        "id": "410c903622f6c8e2",
+        "type": "split",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 250,
+        "y": 360,
+        "wires": [
+            [
+                "8aa86b86eaddc827"
+            ]
+        ]
+    },
+    {
+        "id": "8aa86b86eaddc827",
+        "type": "delay",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "50",
+        "nbRateUnits": "1",
+        "rateUnits": "minute",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 240,
+        "y": 400,
+        "wires": [
+            [
+                "e8f6d2b22d197f13"
+            ]
+        ]
+    },
+    {
+        "id": "20fd99b272aaccde",
+        "type": "change",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "owm",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 570,
+        "y": 480,
+        "wires": [
+            [
+                "f03ba767c129f69b"
+            ]
+        ]
+    },
+    {
+        "id": "e45925d81c5ddfda",
+        "type": "change",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "revgeocode",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 890,
+        "y": 360,
+        "wires": [
+            [
+                "0193d0cc4010e60f"
+            ]
+        ]
+    },
+    {
+        "id": "51effb339ea4f74e",
+        "type": "change",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload",
+                "pt": "msg",
+                "to": "lat_lon",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 470,
+        "y": 360,
+        "wires": [
+            [
+                "4c44e3abc4fcd1eb"
+            ]
+        ]
+    },
+    {
+        "id": "2ea12566e4a0ddc7",
+        "type": "influxdb batch",
+        "z": "59b6ea3e0dab2122",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "OWM weather data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-live",
+        "x": 1370,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "f9137c59125d3c0d",
+        "type": "switch",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "property": "payload.current",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nempty"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 510,
+        "y": 440,
+        "wires": [
+            [
+                "20fd99b272aaccde"
+            ]
+        ]
+    },
+    {
+        "id": "ceac54f342a9e889",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "Fieldkit POST",
+        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1340,
+        "y": 220,
+        "wires": [
+            [
+                "1948c11829f1050f"
+            ]
+        ]
+    },
+    {
+        "id": "1948c11829f1050f",
+        "type": "http request",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 1510,
+        "y": 220,
+        "wires": [
+            [
+                "821cdc05c82fbd0a"
+            ]
+        ]
+    },
+    {
+        "id": "821cdc05c82fbd0a",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "HTTP Status",
+        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1670,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c772df430fe6c58c",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 890,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "23e895c53f799791",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 690,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "634030652944940b",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1330,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "3582eb8444820738",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 490,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "96953e9380f6b289",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 650,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "9637d78579cb1b2b",
+        "type": "inject",
+        "z": "e0603b84198efa0a",
+        "name": "Inject station_ids",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "180",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[\t    8518750,\t    8516945,\t    8531680\t]",
+        "payloadType": "jsonata",
+        "x": 130,
+        "y": 40,
+        "wires": [
+            [
+                "690cfc0fd6894019"
+            ]
+        ]
+    },
+    {
+        "id": "478c541fff4fedfa",
+        "type": "http request",
+        "z": "e0603b84198efa0a",
+        "name": "NOAA tide API",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=NOS.COOPS.TAC.WL&date=latest&datum=NAVD&station={{{payload}}}&time_zone=gmt&units=metric&format=json",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 440,
+        "y": 40,
+        "wires": [
+            [
+                "71134cb878e2e45b"
+            ]
+        ]
+    },
+    {
+        "id": "690cfc0fd6894019",
+        "type": "split",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 290,
+        "y": 40,
+        "wires": [
+            [
+                "478c541fff4fedfa"
+            ]
+        ]
+    },
+    {
+        "id": "71134cb878e2e45b",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "payload",
+        "func": "var data_payload = msg.payload.data[0];\n\nif (data_payload === undefined){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = msg.payload.metadata.id;\nvar sensor_id = 'noaa-tidal-' + station_id;\nvar sensor_name = msg.payload.metadata.name + ' (' + station_id + ')';\nvar lat = parseFloat(msg.payload.metadata.lat);\nvar lng = parseFloat(msg.payload.metadata.lon);\nvar ts = Date.parse(data_payload.t + ' GMT');\n\nvar fields = {\n            navd88_mm: Math.round(parseFloat(data_payload.v) * 1000) + 'i' || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.influx_payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 40,
+        "wires": [
+            [
+                "7021700bfe7cd70a"
+            ]
+        ]
+    },
+    {
+        "id": "4d2ae3bb71a480eb",
+        "type": "influxdb batch",
+        "z": "e0603b84198efa0a",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "Tidal data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-live",
+        "x": 300,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "bb63f3f9f599785f",
+        "type": "inject",
+        "z": "e0603b84198efa0a",
+        "name": "Inject station_ids",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "180",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[\t   \"01311875\",\t   \"01311850\",\t   \"01311145\",\t   \"01376562\",\t   \"01311143\",\t   \"404609073452101\",\t   \"01302027\",\t   \"405119073551401\",\t   \"01310740\",\t   \"01396060\",\t   \"01310521\"\t]",
+        "payloadType": "jsonata",
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "0dca1a125cfcdcdd"
+            ]
+        ]
+    },
+    {
+        "id": "0dca1a125cfcdcdd",
+        "type": "split",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 290,
+        "y": 80,
+        "wires": [
+            [
+                "ae046715aba47672"
+            ]
+        ]
+    },
+    {
+        "id": "ae046715aba47672",
+        "type": "http request",
+        "z": "e0603b84198efa0a",
+        "name": "USGS tide API",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://waterservices.usgs.gov/nwis/iv/?format=json&sites={{{payload}}}&parameterCd=62620&siteStatus=all&period=PT1H",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 440,
+        "y": 80,
+        "wires": [
+            [
+                "f39edec5bd26aecf"
+            ]
+        ]
+    },
+    {
+        "id": "7cf54d59c09487d0",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "func": "if (msg.payload.sites === undefined || Object.keys(msg.payload.sites).length === 0){\n   return undefined;\n}\n\n\nvar data_payload = msg.payload.sites[0];\nvar station_id = data_payload.site_no;\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.station_nm;\nvar lat = data_payload.dec_lat_va;\nvar lng = data_payload.dec_long_va;\nvar ts = Date.parse(data_payload.stage_dt + ' ' + data_payload.tz_cd);\n\nvar fields = {\n            stage_mm: data_payload.stage * 304.8 || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 660,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "44fac76d4e932ad9",
+        "type": "influxdb batch",
+        "z": "e0603b84198efa0a",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "Tidal data insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-live",
+        "x": 660,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "7c9eefa386d25375",
+        "type": "http request",
+        "z": "e0603b84198efa0a",
+        "name": "NOAA VDATUM API",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://vdatum.noaa.gov/vdatumweb/api/tidal?lon={{{lng}}}&lat={{{lat}}}&t_v_frame={{{payload}}}",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 420,
+        "y": 160,
+        "wires": [
+            [
+                "560959ca8c8e9232"
+            ]
+        ]
+    },
+    {
+        "id": "d6295bc7bcba1302",
+        "type": "file in",
+        "z": "e0603b84198efa0a",
+        "name": "Read datum file",
+        "filename": "/data/sensor_meta/datum.txt",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 920,
+        "y": 60,
+        "wires": [
+            [
+                "61d22faeaf35d53b"
+            ]
+        ]
+    },
+    {
+        "id": "61d22faeaf35d53b",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "func": "let lines = msg.payload.split(\"\\n\");\n\nmsg.datums = [\"mhhw\", \"mllw\"];\n\nmsg.found_match = false;\n\nlines.forEach((line, index) => {\n    var line_parts = line.split(\",\");\n    \n    if (line_parts[0] == msg.dev_id) {\n        msg.datum_payload = [];\n        msg.datums.forEach((datum_entry, datum_index) => {\n            msg.datum_payload.push({\"tar_vertical_frame\": datum_entry, \"tar_height\": line_parts[datum_index + 1]});\n        });\n        msg.found_match = true;\n    }\n});\n\nmsg.payload = msg.datums;\n\nmsg.lines = lines;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1080,
+        "y": 60,
+        "wires": [
+            [
+                "3ebc70864470016e"
+            ]
+        ]
+    },
+    {
+        "id": "dc74c528e0e4af5b",
+        "type": "file",
+        "z": "e0603b84198efa0a",
+        "name": "Write datum file",
+        "filename": "/data/sensor_meta/datum.txt",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 740,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a367f5783c8238ec",
+        "type": "split",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 230,
+        "y": 160,
+        "wires": [
+            [
+                "7c9eefa386d25375"
+            ]
+        ]
+    },
+    {
+        "id": "560959ca8c8e9232",
+        "type": "join",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "mode": "auto",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": true,
+        "timeout": "",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 610,
+        "y": 160,
+        "wires": [
+            [
+                "7d5ef9f277d6d75b"
+            ]
+        ]
+    },
+    {
+        "id": "7d5ef9f277d6d75b",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "func": "let new_entry = msg.dev_id;\n\nmsg.payload.forEach((datum_entry, index) => {\n    let datum_offset = parseFloat(datum_entry.tar_height) * 1000;\n    let navd88_val = parseInt(msg.influx_payload[0].fields.navd88_mm);\n    let datum_val = Math.round(navd88_val + datum_offset) + 'i';\n    msg.influx_payload[0].fields[datum_entry.tar_vertical_frame + \"_mm\"] = datum_val;\n    new_entry += ',' + datum_entry.tar_height;\n});\n\nmsg.lines.push(new_entry);\n\nconst clean_lines = msg.lines.filter(element => {\n  return element !== '';\n});\n\nmsg.lines = clean_lines.join(\"\\n\");\n\nmsg.payload = msg.influx_payload;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 120,
+        "y": 380,
+        "wires": [
+            [
+                "b37ac0e05846e70f",
+                "4d2ae3bb71a480eb",
+                "4ebeda902593462a",
+                "d6f6b3888bd06c8f"
+            ]
+        ]
+    },
+    {
+        "id": "3ebc70864470016e",
+        "type": "switch",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "property": "found_match",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "false"
+            },
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 90,
+        "y": 160,
+        "wires": [
+            [
+                "a367f5783c8238ec"
+            ],
+            [
+                "c226992612d4e581"
+            ]
+        ]
+    },
+    {
+        "id": "c928f08217446419",
+        "type": "change",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "lines",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 480,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b37ac0e05846e70f",
+        "type": "switch",
+        "z": "e0603b84198efa0a",
+        "name": "new entries",
+        "property": "found_match",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "false"
+            },
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 290,
+        "y": 380,
+        "wires": [
+            [
+                "c928f08217446419"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "c226992612d4e581",
+        "type": "change",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "datum_payload",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 300,
+        "y": 200,
+        "wires": [
+            [
+                "7d5ef9f277d6d75b"
+            ]
+        ]
+    },
+    {
+        "id": "e3bb4c0c491c9929",
+        "type": "debug",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 930,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "f39edec5bd26aecf",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "payload",
+        "func": "var data_payload = msg.payload.value.timeSeries[0];\n\nif (data_payload === undefined || data_payload.values.length < 2){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = data_payload.sourceInfo.siteCode[0].value;\n\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.sourceInfo.siteName + ' (' + station_id + ')';\nvar lat = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.latitude);\nvar lng = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.longitude);\n\n// Get the correct values array idx as one is measured and the other is predicted\nvar values_idx = 0;\nif (data_payload.values[0].method[0].methodID == 238983){\n    values_idx = 0;\n} else {\n    values_idx = 1;\n}\nvar data_values = data_payload.values[values_idx].value;\nvar num_of_vals = data_values.length;\nvar last_value = data_values[num_of_vals - 1];\n\nvar ts = Date.parse(last_value.dateTime);\n\nvar val = parseFloat(last_value.value);\n\n\nvar fields = {\n            navd88_mm: Math.round(val * 304.8) + 'i' || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.influx_payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 80,
+        "wires": [
+            [
+                "7021700bfe7cd70a"
+            ]
+        ]
+    },
+    {
+        "id": "7021700bfe7cd70a",
+        "type": "switch",
+        "z": "e0603b84198efa0a",
+        "name": "valid",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nnull"
+            },
+            {
+                "t": "null"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 750,
+        "y": 60,
+        "wires": [
+            [
+                "d6295bc7bcba1302"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "4ebeda902593462a",
+        "type": "debug",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 290,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "d6f6b3888bd06c8f",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "Fieldkit POST",
+        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 340,
+        "wires": [
+            [
+                "f0ed6eec16d38a64"
+            ]
+        ]
+    },
+    {
+        "id": "f0ed6eec16d38a64",
+        "type": "http request",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 470,
+        "y": 340,
+        "wires": [
+            [
+                "98d5bacfccca5213"
+            ]
+        ]
+    },
+    {
+        "id": "98d5bacfccca5213",
+        "type": "function",
+        "z": "e0603b84198efa0a",
+        "name": "HTTP Status",
+        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "0670e459fc3c98c0",
+        "type": "debug",
+        "z": "e0603b84198efa0a",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1140,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "97a92550bb51b952",
+        "type": "inject",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "15 05 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[\t   'floodnet-live'\t]",
+        "payloadType": "jsonata",
+        "x": 90,
+        "y": 100,
+        "wires": [
+            [
+                "0d93778db11fa758"
+            ]
+        ]
+    },
+    {
+        "id": "bb90fef6fb25b7ee",
+        "type": "influxdb in",
+        "z": "54e1edf44c387788",
+        "influxdb": "4b9a03aed4358412",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "floodnet",
+        "x": 570,
+        "y": 120,
+        "wires": [
+            [
+                "c9d6973e721d7130",
+                "8744e043d5b34f18"
+            ]
+        ]
+    },
+    {
+        "id": "93083f815ba539af",
+        "type": "function",
+        "z": "54e1edf44c387788",
+        "name": "Create query",
+        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 10.0;\nvar max_val_filt = 4000;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = bucket_name;\nvar field_name = 'dist_mm';\n\nvar agg_str = 'median';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> filter(fn: (r) => r._value < ${max_val_filt})\n  |> keep(columns: [\"_value\", \"dev_id\", \"deployment_id\"])\n  |> toFloat()\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"deployment_id\"])\n|> rename(columns: {_value_median: \"${agg_str}\", _value_stddev: \"stddev\", dev_id_median: \"dev_id\"})\n|> filter(fn: (r) => r.stddev < ${std_limit})\n`\nmsg.query = query;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 100,
+        "wires": [
+            [
+                "bb90fef6fb25b7ee",
+                "d44fa3133fc3a99e",
+                "74c6b859f6e38b4d"
+            ]
+        ]
+    },
+    {
+        "id": "4257d78af3302b76",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 370,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "c9d6973e721d7130",
+        "type": "function",
+        "z": "54e1edf44c387788",
+        "name": "Create median insert",
+        "func": "var meas_array = [];\nvar med_array = [];\nvar dev_id_array = [];\nvar dep_id_array = [];\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    \n    var global_var_name = info.dev_id + '.night_median';\n    global.set(global_var_name, info.median);\n    msg.median = info.median;\n    \n    med_array.push(msg.median);\n    dev_id_array.push(info.dev_id);\n    dep_id_array.push(info.deployment_id);\n    \n    var influx_entry = {\n        measurement: 'flood-sensor',\n        fields: {\n            night_median_mm: msg.median\n        },\n        tags:{\n            sensor_id: info.dev_id\n        },\n        timestamp: new Date().getTime()\n    };\n    meas_array.push(influx_entry);\n    \n}\nmsg.med_array = med_array;\nmsg.dev_id_array = dev_id_array;\nmsg.dep_id_array = dep_id_array;\nmsg.payload = meas_array;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 140,
+        "y": 200,
+        "wires": [
+            [
+                "45af59cd0c241688",
+                "4257d78af3302b76",
+                "8d7a70ac84459159"
+            ]
+        ]
+    },
+    {
+        "id": "45af59cd0c241688",
+        "type": "influxdb batch",
+        "z": "54e1edf44c387788",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "Median insert",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "floodnet-live",
+        "x": 380,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "0d93778db11fa758",
+        "type": "split",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 210,
+        "y": 100,
+        "wires": [
+            [
+                "93083f815ba539af"
+            ]
+        ]
+    },
+    {
+        "id": "d44fa3133fc3a99e",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 510,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "8d7a70ac84459159",
+        "type": "file in",
+        "z": "54e1edf44c387788",
+        "name": "Read dep_id file",
+        "filename": "/data/sensor_meta/deploy_id_map.txt",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 380,
+        "y": 260,
+        "wires": [
+            [
+                "a5d2e4088c0d40da"
+            ]
+        ]
+    },
+    {
+        "id": "f1a3c9f0126fc622",
+        "type": "csv",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "sep": ",",
+        "hdrin": "",
+        "hdrout": "none",
+        "multi": "mult",
+        "ret": "\\n",
+        "temp": "",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 950,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a5d2e4088c0d40da",
+        "type": "function",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "func": "let lines = msg.payload.split(\"\\n\");\nlet found_match = false;\n\nmsg.dev_id_array.forEach((element, idx) => {\n    found_match = false;\n    lines.forEach((line, index) => {\n        var line_parts = line.split(\",\");\n        if (line_parts[0] == element) {\n            lines[index] = line_parts[0] + \",\" + line_parts[1] + \",\" + msg.med_array[idx];\n            found_match = true;\n        }\n    });\n    if (!found_match){\n        lines.push(msg.dev_id_array[idx] + \",\" + msg.dep_id_array[idx] + \",\" + msg.med_array[idx])\n    }\n});\n\nmsg.payload = lines.join(\"\\n\");\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 260,
+        "wires": [
+            [
+                "d41bd81967a828fe"
+            ]
+        ]
+    },
+    {
+        "id": "4bb31c8faf430f5b",
+        "type": "inject",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "props": [
+            {
+                "p": "med_array",
+                "v": "[2654,2554,2387]",
+                "vt": "jsonata"
+            },
+            {
+                "p": "dev_id_array",
+                "v": "[\"fs-00001\",\"fs-00002\",\"fs-00003\"]",
+                "vt": "jsonata"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 110,
+        "y": 260,
+        "wires": [
+            [
+                "8d7a70ac84459159"
+            ]
+        ]
+    },
+    {
+        "id": "6f6058ae65e3a362",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 810,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "d41bd81967a828fe",
+        "type": "file",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "filename": "/data/sensor_meta/deploy_id_map.txt",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 680,
+        "y": 260,
+        "wires": [
+            [
+                "6f6058ae65e3a362"
+            ]
+        ]
+    },
+    {
+        "id": "8744e043d5b34f18",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 790,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "74c6b859f6e38b4d",
+        "type": "debug",
+        "z": "54e1edf44c387788",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 530,
+        "y": 80,
+        "wires": []
     },
     {
         "id": "a333bbcff1929612",
@@ -1517,8 +3024,7 @@
         "y": 40,
         "wires": [
             [
-                "cb2e8564e10f832a",
-                "91c134739839b339"
+                "cb2e8564e10f832a"
             ]
         ]
     },
@@ -1564,12 +3070,12 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 660,
+        "x": 680,
         "y": 40,
         "wires": [
             [
                 "c53d8aedbedb0c01",
-                "726429c749c0b0b5"
+                "91c134739839b339"
             ]
         ]
     },
@@ -1584,8 +3090,8 @@
         "arraySpltType": "len",
         "stream": false,
         "addname": "",
-        "x": 110,
-        "y": 140,
+        "x": 90,
+        "y": 100,
         "wires": [
             [
                 "173f3a7cea0eb1df"
@@ -1606,8 +3112,8 @@
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 670,
-        "y": 140,
+        "x": 630,
+        "y": 100,
         "wires": [
             [
                 "bdb138bb6fe7fc89",
@@ -1630,8 +3136,8 @@
                 "type": "msg"
             }
         ],
-        "x": 480,
-        "y": 140,
+        "x": 460,
+        "y": 100,
         "wires": [
             [
                 "d55cefb55950509e"
@@ -1657,8 +3163,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 280,
-        "y": 140,
+        "x": 260,
+        "y": 100,
         "wires": [
             [
                 "f5f13934eb8ab41d"
@@ -1676,12 +3182,12 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 120,
-        "y": 220,
+        "x": 800,
+        "y": 100,
         "wires": [
             [
                 "050c9b632ed81f5d",
-                "726429c749c0b0b5"
+                "91c134739839b339"
             ]
         ]
     },
@@ -1698,24 +3204,8 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-live",
-        "x": 300,
-        "y": 220,
-        "wires": []
-    },
-    {
-        "id": "726429c749c0b0b5",
-        "type": "debug",
-        "z": "e3941d68335018ed",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1210,
-        "y": 700,
+        "x": 1000,
+        "y": 100,
         "wires": []
     },
     {
@@ -1730,1696 +3220,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1090,
-        "y": 200,
-        "wires": []
-    },
-    {
-        "id": "62f132ed4b7660a9",
-        "type": "http request",
-        "z": "59b6ea3e0dab2122",
-        "name": "MN request",
-        "method": "GET",
-        "ret": "txt",
-        "paytoqs": "ignore",
-        "url": "https://api.nysmesonet.org/data/dynserv/coned/5min/nyc/{{{timerange}}}?{{{payload}}}",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 150,
-        "y": 100,
-        "wires": [
-            [
-                "b84c28e164baf1e6",
-                "96953e9380f6b289"
-            ]
-        ]
-    },
-    {
-        "id": "4f87538ceb946c0d",
-        "type": "inject",
-        "z": "59b6ea3e0dab2122",
-        "name": "Inject MN station URLs",
-        "props": [
-            {
-                "p": "timerange",
-                "v": "$join(\t   [\t       $fromMillis($millis() - 240000),\t       $fromMillis($millis())\t   ],\t   '/'\t)",
-                "vt": "jsonata"
-            },
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "10",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "$join(\t   [\t       'variables[]=tair@degC',\t       'variables[]=tslo@degC',\t       'variables[]=relh@percent',\t       'variables[]=precip:incremental@mm',\t       'variables[]=precip@mm',\t       'variables[]=precip_local@mm',\t       'variables[]=precip_total@mm',\t       'variables[]=precip_max_intensity@mm/min',\t       'variables[]=winds_sonic@m/s',\t       'variables[]=srad@W/m^2',\t       'variables[]=pres@millibars',\t       'variables[]=snow_depth@mm',\t       'variables[]=lat@degrees',\t       'variables[]=lon@degrees'\t   ],\t   '&'\t)",
-        "payloadType": "jsonata",
-        "x": 150,
-        "y": 20,
-        "wires": [
-            [
-                "62f132ed4b7660a9",
-                "3582eb8444820738"
-            ]
-        ]
-    },
-    {
-        "id": "bf77b6cbe5bb5efb",
-        "type": "csv",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "sep": ",",
-        "hdrin": true,
-        "hdrout": "none",
-        "multi": "mult",
-        "ret": "\\n",
-        "temp": "",
-        "skip": "0",
-        "strings": true,
-        "include_empty_strings": "",
-        "include_null_values": "",
-        "x": 270,
-        "y": 220,
-        "wires": [
-            [
-                "c76e21c56c558be6"
-            ]
-        ]
-    },
-    {
-        "id": "b84c28e164baf1e6",
-        "type": "switch",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "nempty"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 210,
-        "y": 160,
-        "wires": [
-            [
-                "bf77b6cbe5bb5efb"
-            ]
-        ]
-    },
-    {
-        "id": "c76e21c56c558be6",
-        "type": "function",
-        "z": "59b6ea3e0dab2122",
-        "name": "Check for empty",
-        "func": "cnt = 0;\n\nfor (const station of msg.payload){\n    cnt += Object.keys(station).length;\n}\n\nif (cnt == msg.payload.length * 4)\n    return '';\nelse\n    return msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 410,
-        "y": 20,
-        "wires": [
-            [
-                "3f60b54328ff9718"
-            ]
-        ]
-    },
-    {
-        "id": "3f60b54328ff9718",
-        "type": "switch",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "nempty"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 410,
-        "y": 80,
-        "wires": [
-            [
-                "ed9c3a5a7b9aedf2"
-            ]
-        ]
-    },
-    {
-        "id": "742bda0e4b0972e6",
-        "type": "inject",
-        "z": "59b6ea3e0dab2122",
-        "name": "Inject NWS station URLs",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "60",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "[\t   'https://api.weather.gov/stations/KJFK/observations/latest',\t   'https://api.weather.gov/stations/KLGA/observations/latest',\t   'https://api.weather.gov/stations/KNYC/observations/latest'\t]",
-        "payloadType": "jsonata",
-        "x": 150,
-        "y": 280,
-        "wires": [
-            [
-                "567665bec1f6ee11"
-            ]
-        ]
-    },
-    {
-        "id": "567665bec1f6ee11",
-        "type": "split",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": true,
-        "addname": "",
-        "x": 170,
-        "y": 340,
-        "wires": [
-            [
-                "49ad4015de5d0710"
-            ]
-        ]
-    },
-    {
-        "id": "bba0e1b1684e109b",
-        "type": "http request",
-        "z": "59b6ea3e0dab2122",
-        "name": "NWS request",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 290,
-        "y": 460,
-        "wires": [
-            [
-                "4c120bcceeb78769"
-            ]
-        ]
-    },
-    {
-        "id": "49ad4015de5d0710",
-        "type": "change",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "rules": [
-            {
-                "t": "move",
-                "p": "payload",
-                "pt": "msg",
-                "to": "url",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 230,
-        "y": 400,
-        "wires": [
-            [
-                "bba0e1b1684e109b"
-            ]
-        ]
-    },
-    {
-        "id": "4c120bcceeb78769",
-        "type": "switch",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "property": "payload['properties']['rawMessage']",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "nnull"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 390,
-        "y": 280,
-        "wires": [
-            [
-                "e5a534afcfdc4833"
-            ]
-        ]
-    },
-    {
-        "id": "4871d24c8081c6c1",
-        "type": "influxdb batch",
-        "z": "59b6ea3e0dab2122",
-        "influxdb": "4b9a03aed4358412",
-        "precision": "",
-        "retentionPolicy": "",
-        "name": "NWS weather data insert",
-        "database": "database",
-        "precisionV18FluxV20": "ms",
-        "retentionPolicyV18Flux": "",
-        "org": "floodnet",
-        "bucket": "floodnet-live",
-        "x": 710,
-        "y": 280,
-        "wires": []
-    },
-    {
-        "id": "e5a534afcfdc4833",
-        "type": "function",
-        "z": "59b6ea3e0dab2122",
-        "name": "Setup NWS payload",
-        "func": "var data_payload = msg.payload['properties'];\nvar station_id = data_payload['rawMessage'].slice(0,4).trim().toLowerCase();\nvar sensor_id = 'nws-' + station_id;\nvar location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['timestamp']);\n// Quality control checks\n// https://madis.ncep.noaa.gov/madis_sfc_qc_notes.shtml\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temperature']['value'],\n            wind_dir_deg: data_payload['windDirection']['value'],\n            wind_speed_kmh: data_payload['windSpeed']['value'],\n            visibility: data_payload['visibility']['value'],\n            baro_pres_pa: data_payload['barometricPressure']['value'],\n            precip_last_hour_mm: data_payload['precipitationLastHour']['value'] * 1000,\n            relhumid_percent: +data_payload['relativeHumidity']['value'],\n            windchill_c: +data_payload['windChill']['value']\n        };\n        \nvar tags = {\n            weather_group: 'nws',\n            sensor_id: sensor_id,\n            lat: location_info['coordinates'][1],\n            lng: location_info['coordinates'][0],\n            sensor_types: 'temp,humid,precip,pres,wind',\n            sensor_name: 'NWS ' + station_id.slice(1,4).toUpperCase() + ' Weather station (' + station_id.toUpperCase() + ')'\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'weather',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 340,
-        "wires": [
-            [
-                "4871d24c8081c6c1"
-            ]
-        ]
-    },
-    {
-        "id": "9f175b1da3175ea9",
-        "type": "function",
-        "z": "59b6ea3e0dab2122",
-        "name": "Setup MN payload",
-        "func": "var data_payload = msg.payload;\nvar station_id = data_payload['station'];\nvar sensor_id = 'nyc-micronet-' + station_id.toLowerCase();\n// var location_info = msg.payload['geometry'];\nvar ts = Date.parse(data_payload['datetime']);\n\nvar fields = {\n            // timestamp: ts,\n            temp_c: data_payload['temp_2m [degC]'] || undefined,\n            temp_slow_c: data_payload['tslo [degC]'] || undefined,\n            wind_speed_kmh: (data_payload['avg_wind_speed_sonic [m/s]'] * 3.6) || undefined,\n            baro_pres_pa: (data_payload['station_pressure [millibars]'] * 100) || undefined,\n            precip_increm_mm: data_payload['precip_incremental [mm]'] || undefined,\n            max_precip_last_5min_mm_per_min: data_payload['precip_max_intensity [mm/min]'] || undefined,\n            relhumid_percent: data_payload['relative_humidity [percent]'] || undefined,\n            wind_dir_deg: data_payload['wind_direction_sonic [degrees]'] || undefined,\n            solar_insol_wm2: data_payload['solar_insolation [W/m^2]'] || undefined,\n            snow_depth_mm: data_payload['snow_depth [mm]'] || undefined\n        };\n        \nvar tags = {\n            weather_group: 'micronet',\n            sensor_id: sensor_id,\n            lat: data_payload['lat [degrees]'],\n            lng: data_payload['lon [degrees]'],\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: 'NYC Micronet weather station (' + station_id + ')'\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'weather',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 510,
-        "y": 200,
-        "wires": [
-            [
-                "51f38eac8def364f",
-                "ceac54f342a9e889"
-            ]
-        ]
-    },
-    {
-        "id": "ed9c3a5a7b9aedf2",
-        "type": "split",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "x": 450,
-        "y": 140,
-        "wires": [
-            [
-                "9f175b1da3175ea9"
-            ]
-        ]
-    },
-    {
-        "id": "51f38eac8def364f",
-        "type": "influxdb batch",
-        "z": "59b6ea3e0dab2122",
-        "influxdb": "4b9a03aed4358412",
-        "precision": "",
-        "retentionPolicy": "",
-        "name": "NYC Micronet weather data insert",
-        "database": "database",
-        "precisionV18FluxV20": "ms",
-        "retentionPolicyV18Flux": "",
-        "org": "floodnet",
-        "bucket": "floodnet-live",
-        "x": 700,
+        "x": 990,
         "y": 40,
-        "wires": []
-    },
-    {
-        "id": "4c44e3abc4fcd1eb",
-        "type": "http request",
-        "z": "59b6ea3e0dab2122",
-        "name": "Open Weather API",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "https://api.openweathermap.org/data/2.5/onecall?lat={{{lat_lon.0}}}&lon={{{lat_lon.1}}}&exclude=hourly,daily&appid={{{appid}}}&units=metric",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 390,
-        "y": 760,
-        "wires": [
-            [
-                "f9137c59125d3c0d"
-            ]
-        ]
-    },
-    {
-        "id": "c9f27f5d47a10a45",
-        "type": "inject",
-        "z": "59b6ea3e0dab2122",
-        "name": "Inject OWM locations",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "3480",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "[\t   [40.680092,-74.014416],\t   [40.676195,-73.986974],\t   [40.598504,-73.970988],\t   [40.575299,-73.996754],\t   [40.653567,-73.923218],\t   [40.657421,-73.830684],\t   [40.611045,-73.821752],\t   [40.714464,-73.749413],\t   [40.683750,-73.890956],\t   [40.769089,-73.925311],\t   [40.774001,-73.823847],\t   [40.594925,-74.089129],\t   [40.533894,-74.197005],\t   [40.613171,-74.159901],\t   [40.716077,-74.007504],\t   [40.724654,-73.975840],\t   [40.802544,-73.948427],\t   [40.865397,-73.923453],\t   [40.820639,-73.913116],\t   [40.829500,-73.859615],\t   [40.882832,-73.851669],\t   [40.846075,-73.787256],\t   [40.775942,-73.872940]\t]",
-        "payloadType": "jsonata",
-        "x": 160,
-        "y": 640,
-        "wires": [
-            [
-                "410c903622f6c8e2"
-            ]
-        ]
-    },
-    {
-        "id": "e8f6d2b22d197f13",
-        "type": "credentials",
-        "z": "59b6ea3e0dab2122",
-        "name": "OWAPI and G key store",
-        "props": [
-            {
-                "value": "appid",
-                "type": "msg"
-            },
-            {
-                "value": "gapikey",
-                "type": "msg"
-            }
-        ],
-        "x": 230,
-        "y": 880,
-        "wires": [
-            [
-                "51effb339ea4f74e"
-            ]
-        ]
-    },
-    {
-        "id": "0193d0cc4010e60f",
-        "type": "function",
-        "z": "59b6ea3e0dab2122",
-        "name": "OWM setup payload",
-        "func": "var weather_payload = msg.owm;\nvar revgeocode_payload = msg.revgeocode;\nvar meas_array = [];\nvar forecast_mins = 60;\nvar sensor_id = 'owm-' + revgeocode_payload.osm_id;\nvar sensor_name = revgeocode_payload.address.neighbourhood + ' - openweathermap.org (' + sensor_id + ')';\n\nvar rain_amnt,snow_amnt = null;\n\nif (weather_payload.current.rain){\n    rain_amnt = weather_payload.current.rain['1h'];\n}\n\nif (weather_payload.current.snow){\n    snow_amnt = weather_payload.current.snow['1h'];\n}\n\n\nvar cur_weather = {\n   measurement: 'weather',\n      fields: {\n        temp_c: weather_payload.current['temp'],\n        baro_pres_pa: weather_payload.current['pressure'] * 1000,\n        relhumid_percent: weather_payload.current['humidity'],\n        cloud_percent: weather_payload.current['clouds'],\n        wind_speed_kmh: weather_payload.current['wind_speed'] * 3.6,\n        wind_dir_deg: weather_payload.current['wind_deg'],\n        precip_last_hour_mm: rain_amnt || undefined,\n        snow_last_hour_mm: snow_amnt || undefined\n      },\n      tags:{\n        weather_group: 'open_weather_map_forecast',\n        sensor_id: sensor_id,\n        lat: weather_payload.lat,\n        lng: weather_payload.lon,\n        sensor_types: 'temp,humid,precip,pres,wind,solar',\n        sensor_name: sensor_name,\n        sensor_address_zip: revgeocode_payload.address.postcode,\n        sensor_address_borough: revgeocode_payload.address.suburb,\n        sensor_address_state: revgeocode_payload.address.state,\n        sensor_address_country: revgeocode_payload.address.country,\n        sensor_address_house_number: revgeocode_payload.address.house_number,\n        sensor_address_street: revgeocode_payload.address.road,\n        sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n      },\n      timestamp: weather_payload.current['dt'] * 1000\n};\n\nmeas_array.push(cur_weather);\n\nif (weather_payload.minutely){\n    for (var i = 0; i < forecast_mins; i++) {\n        var min_item = weather_payload.minutely[i];\n        var min_entry = {\n          measurement: 'weather',\n          fields: {\n            precip_forecast_last_min_mm: min_item['precipitation']\n          },\n          tags:{\n            weather_group: 'open_weather_map_forecast',\n            sensor_id: sensor_id,\n            lat: weather_payload.lat,\n            lng: weather_payload.lon,\n            sensor_types: 'temp,humid,precip,pres,wind,solar',\n            sensor_name: sensor_name,\n            sensor_address_zip: revgeocode_payload.address.postcode,\n            sensor_address_borough: revgeocode_payload.address.suburb,\n            sensor_address_state: revgeocode_payload.address.state,\n            sensor_address_country: revgeocode_payload.address.country,\n            sensor_address_house_number: revgeocode_payload.address.house_number,\n            sensor_address_street: revgeocode_payload.address.road,\n            sensor_address_neighbourhood: revgeocode_payload.address.neighbourhood\n          },\n          timestamp: min_item['dt'] * 1000\n        };\n        meas_array.push(min_entry);\n    }\n}\n\nmsg.payload = meas_array;\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 760,
-        "y": 800,
-        "wires": [
-            [
-                "2ea12566e4a0ddc7",
-                "634030652944940b"
-            ]
-        ]
-    },
-    {
-        "id": "f03ba767c129f69b",
-        "type": "http request",
-        "z": "59b6ea3e0dab2122",
-        "name": "Rev geocode",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "http://nominatim.openstreetmap.org/reverse?format=json&lat={{{lat_lon.0}}}&lon={{{lat_lon.1}}}&zoom=18&addressdetails=1",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 630,
-        "y": 700,
-        "wires": [
-            [
-                "e45925d81c5ddfda"
-            ]
-        ]
-    },
-    {
-        "id": "410c903622f6c8e2",
-        "type": "split",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "x": 150,
-        "y": 760,
-        "wires": [
-            [
-                "8aa86b86eaddc827"
-            ]
-        ]
-    },
-    {
-        "id": "8aa86b86eaddc827",
-        "type": "delay",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "pauseType": "rate",
-        "timeout": "5",
-        "timeoutUnits": "seconds",
-        "rate": "50",
-        "nbRateUnits": "1",
-        "rateUnits": "minute",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 200,
-        "y": 820,
-        "wires": [
-            [
-                "e8f6d2b22d197f13"
-            ]
-        ]
-    },
-    {
-        "id": "20fd99b272aaccde",
-        "type": "change",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "rules": [
-            {
-                "t": "move",
-                "p": "payload",
-                "pt": "msg",
-                "to": "owm",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 530,
-        "y": 880,
-        "wires": [
-            [
-                "f03ba767c129f69b"
-            ]
-        ]
-    },
-    {
-        "id": "e45925d81c5ddfda",
-        "type": "change",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "rules": [
-            {
-                "t": "move",
-                "p": "payload",
-                "pt": "msg",
-                "to": "revgeocode",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 710,
-        "y": 760,
-        "wires": [
-            [
-                "0193d0cc4010e60f"
-            ]
-        ]
-    },
-    {
-        "id": "51effb339ea4f74e",
-        "type": "change",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "rules": [
-            {
-                "t": "move",
-                "p": "payload",
-                "pt": "msg",
-                "to": "lat_lon",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 330,
-        "y": 700,
-        "wires": [
-            [
-                "4c44e3abc4fcd1eb"
-            ]
-        ]
-    },
-    {
-        "id": "2ea12566e4a0ddc7",
-        "type": "influxdb batch",
-        "z": "59b6ea3e0dab2122",
-        "influxdb": "4b9a03aed4358412",
-        "precision": "",
-        "retentionPolicy": "",
-        "name": "OWM weather data insert",
-        "database": "database",
-        "precisionV18FluxV20": "ms",
-        "retentionPolicyV18Flux": "",
-        "org": "floodnet",
-        "bucket": "floodnet-live",
-        "x": 1030,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "f9137c59125d3c0d",
-        "type": "switch",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "property": "payload.current",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "nempty"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 820,
-        "wires": [
-            [
-                "20fd99b272aaccde"
-            ]
-        ]
-    },
-    {
-        "id": "ceac54f342a9e889",
-        "type": "function",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 720,
-        "y": 160,
-        "wires": [
-            [
-                "1948c11829f1050f"
-            ]
-        ]
-    },
-    {
-        "id": "1948c11829f1050f",
-        "type": "http request",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "method": "use",
-        "ret": "txt",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 930,
-        "y": 160,
-        "wires": [
-            [
-                "821cdc05c82fbd0a"
-            ]
-        ]
-    },
-    {
-        "id": "821cdc05c82fbd0a",
-        "type": "function",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1100,
-        "y": 160,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "c772df430fe6c58c",
-        "type": "debug",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 790,
-        "y": 100,
-        "wires": []
-    },
-    {
-        "id": "23e895c53f799791",
-        "type": "debug",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 750,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "634030652944940b",
-        "type": "debug",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1050,
-        "y": 900,
-        "wires": []
-    },
-    {
-        "id": "3582eb8444820738",
-        "type": "debug",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 550,
-        "y": 440,
-        "wires": []
-    },
-    {
-        "id": "96953e9380f6b289",
-        "type": "debug",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 350,
-        "y": 120,
-        "wires": []
-    },
-    {
-        "id": "9637d78579cb1b2b",
-        "type": "inject",
-        "z": "e0603b84198efa0a",
-        "name": "Inject station_ids",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "180",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "[\t    8518750,\t    8516945,\t    8531680\t]",
-        "payloadType": "jsonata",
-        "x": 130,
-        "y": 40,
-        "wires": [
-            [
-                "690cfc0fd6894019"
-            ]
-        ]
-    },
-    {
-        "id": "478c541fff4fedfa",
-        "type": "http request",
-        "z": "e0603b84198efa0a",
-        "name": "NOAA tide API",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&application=NOS.COOPS.TAC.WL&date=latest&datum=NAVD&station={{{payload}}}&time_zone=gmt&units=metric&format=json",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 180,
-        "y": 160,
-        "wires": [
-            [
-                "71134cb878e2e45b"
-            ]
-        ]
-    },
-    {
-        "id": "690cfc0fd6894019",
-        "type": "split",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "x": 110,
-        "y": 100,
-        "wires": [
-            [
-                "478c541fff4fedfa"
-            ]
-        ]
-    },
-    {
-        "id": "71134cb878e2e45b",
-        "type": "function",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "func": "var data_payload = msg.payload.data[0];\n\nif (data_payload === undefined){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = msg.payload.metadata.id;\nvar sensor_id = 'noaa-tidal-' + station_id;\nvar sensor_name = msg.payload.metadata.name + ' (' + station_id + ')';\nvar lat = parseFloat(msg.payload.metadata.lat);\nvar lng = parseFloat(msg.payload.metadata.lon);\nvar ts = Date.parse(data_payload.t + ' GMT');\n\nvar fields = {\n            navd88_mm: Math.round(parseFloat(data_payload.v) * 1000) + 'i' || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.influx_payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 340,
-        "y": 280,
-        "wires": [
-            [
-                "7021700bfe7cd70a"
-            ]
-        ]
-    },
-    {
-        "id": "4d2ae3bb71a480eb",
-        "type": "influxdb batch",
-        "z": "e0603b84198efa0a",
-        "influxdb": "4b9a03aed4358412",
-        "precision": "",
-        "retentionPolicy": "",
-        "name": "Tidal data insert",
-        "database": "database",
-        "precisionV18FluxV20": "ms",
-        "retentionPolicyV18Flux": "",
-        "org": "floodnet",
-        "bucket": "floodnet-live",
-        "x": 1360,
-        "y": 220,
-        "wires": []
-    },
-    {
-        "id": "bb63f3f9f599785f",
-        "type": "inject",
-        "z": "e0603b84198efa0a",
-        "name": "Inject station_ids",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "180",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "[\t   \"01311875\",\t   \"01311850\",\t   \"01311145\",\t   \"01376562\",\t   \"01311143\",\t   \"404609073452101\",\t   \"01302027\",\t   \"405119073551401\",\t   \"01310740\",\t   \"01396060\",\t   \"01310521\"\t]",
-        "payloadType": "jsonata",
-        "x": 130,
-        "y": 300,
-        "wires": [
-            [
-                "0dca1a125cfcdcdd"
-            ]
-        ]
-    },
-    {
-        "id": "0dca1a125cfcdcdd",
-        "type": "split",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "x": 270,
-        "y": 440,
-        "wires": [
-            [
-                "ae046715aba47672"
-            ]
-        ]
-    },
-    {
-        "id": "ae046715aba47672",
-        "type": "http request",
-        "z": "e0603b84198efa0a",
-        "name": "USGS tide API",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "http://waterservices.usgs.gov/nwis/iv/?format=json&sites={{{payload}}}&parameterCd=62620&siteStatus=all&period=PT1H",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 380,
-        "y": 500,
-        "wires": [
-            [
-                "f39edec5bd26aecf"
-            ]
-        ]
-    },
-    {
-        "id": "7cf54d59c09487d0",
-        "type": "function",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "func": "if (msg.payload.sites === undefined || Object.keys(msg.payload.sites).length === 0){\n   return undefined;\n}\n\n\nvar data_payload = msg.payload.sites[0];\nvar station_id = data_payload.site_no;\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.station_nm;\nvar lat = data_payload.dec_lat_va;\nvar lng = data_payload.dec_long_va;\nvar ts = Date.parse(data_payload.stage_dt + ' ' + data_payload.tz_cd);\n\nvar fields = {\n            stage_mm: data_payload.stage * 304.8 || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 520,
-        "y": 560,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "44fac76d4e932ad9",
-        "type": "influxdb batch",
-        "z": "e0603b84198efa0a",
-        "influxdb": "4b9a03aed4358412",
-        "precision": "",
-        "retentionPolicy": "",
-        "name": "Tidal data insert",
-        "database": "database",
-        "precisionV18FluxV20": "ms",
-        "retentionPolicyV18Flux": "",
-        "org": "floodnet",
-        "bucket": "floodnet-live",
-        "x": 740,
-        "y": 560,
-        "wires": []
-    },
-    {
-        "id": "7c9eefa386d25375",
-        "type": "http request",
-        "z": "e0603b84198efa0a",
-        "name": "NOAA VDATUM API",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "https://vdatum.noaa.gov/vdatumweb/api/tidal?lon={{{lng}}}&lat={{{lat}}}&t_v_frame={{{payload}}}",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 920,
-        "y": 20,
-        "wires": [
-            [
-                "560959ca8c8e9232"
-            ]
-        ]
-    },
-    {
-        "id": "d6295bc7bcba1302",
-        "type": "file in",
-        "z": "e0603b84198efa0a",
-        "name": "Read datum file",
-        "filename": "/data/sensor_meta/datum.txt",
-        "format": "utf8",
-        "chunk": false,
-        "sendError": false,
-        "encoding": "none",
-        "allProps": false,
-        "x": 660,
-        "y": 280,
-        "wires": [
-            [
-                "61d22faeaf35d53b"
-            ]
-        ]
-    },
-    {
-        "id": "61d22faeaf35d53b",
-        "type": "function",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "func": "let lines = msg.payload.split(\"\\n\");\n\nmsg.datums = [\"mhhw\", \"mllw\"];\n\nmsg.found_match = false;\n\nlines.forEach((line, index) => {\n    var line_parts = line.split(\",\");\n    \n    if (line_parts[0] == msg.dev_id) {\n        msg.datum_payload = [];\n        msg.datums.forEach((datum_entry, datum_index) => {\n            msg.datum_payload.push({\"tar_vertical_frame\": datum_entry, \"tar_height\": line_parts[datum_index + 1]});\n        });\n        msg.found_match = true;\n    }\n});\n\nmsg.payload = msg.datums;\n\nmsg.lines = lines;\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 180,
-        "wires": [
-            [
-                "3ebc70864470016e"
-            ]
-        ]
-    },
-    {
-        "id": "dc74c528e0e4af5b",
-        "type": "file",
-        "z": "e0603b84198efa0a",
-        "name": "Write datum file",
-        "filename": "/data/sensor_meta/datum.txt",
-        "appendNewline": false,
-        "createDir": true,
-        "overwriteFile": "true",
-        "encoding": "none",
-        "x": 1460,
-        "y": 160,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "a367f5783c8238ec",
-        "type": "split",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "x": 750,
-        "y": 20,
-        "wires": [
-            [
-                "7c9eefa386d25375"
-            ]
-        ]
-    },
-    {
-        "id": "560959ca8c8e9232",
-        "type": "join",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "mode": "auto",
-        "build": "object",
-        "property": "payload",
-        "propertyType": "msg",
-        "key": "topic",
-        "joiner": "\\n",
-        "joinerType": "str",
-        "accumulate": true,
-        "timeout": "",
-        "count": "",
-        "reduceRight": false,
-        "reduceExp": "",
-        "reduceInit": "",
-        "reduceInitType": "",
-        "reduceFixup": "",
-        "x": 1090,
-        "y": 20,
-        "wires": [
-            [
-                "7d5ef9f277d6d75b"
-            ]
-        ]
-    },
-    {
-        "id": "7d5ef9f277d6d75b",
-        "type": "function",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "func": "let new_entry = msg.dev_id;\n\nmsg.payload.forEach((datum_entry, index) => {\n    let datum_offset = parseFloat(datum_entry.tar_height) * 1000;\n    let navd88_val = parseInt(msg.influx_payload[0].fields.navd88_mm);\n    let datum_val = Math.round(navd88_val + datum_offset) + 'i';\n    msg.influx_payload[0].fields[datum_entry.tar_vertical_frame + \"_mm\"] = datum_val;\n    new_entry += ',' + datum_entry.tar_height;\n});\n\nmsg.lines.push(new_entry);\n\nconst clean_lines = msg.lines.filter(element => {\n  return element !== '';\n});\n\nmsg.lines = clean_lines.join(\"\\n\");\n\nmsg.payload = msg.influx_payload;\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1120,
-        "y": 180,
-        "wires": [
-            [
-                "b37ac0e05846e70f",
-                "4d2ae3bb71a480eb",
-                "4ebeda902593462a",
-                "d6f6b3888bd06c8f"
-            ]
-        ]
-    },
-    {
-        "id": "3ebc70864470016e",
-        "type": "switch",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "property": "found_match",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "false"
-            },
-            {
-                "t": "true"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 630,
-        "y": 180,
-        "wires": [
-            [
-                "a367f5783c8238ec"
-            ],
-            [
-                "c226992612d4e581"
-            ]
-        ]
-    },
-    {
-        "id": "c928f08217446419",
-        "type": "change",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "rules": [
-            {
-                "t": "move",
-                "p": "lines",
-                "pt": "msg",
-                "to": "payload",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1420,
-        "y": 80,
-        "wires": [
-            [
-                "dc74c528e0e4af5b"
-            ]
-        ]
-    },
-    {
-        "id": "b37ac0e05846e70f",
-        "type": "switch",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "property": "found_match",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "false"
-            },
-            {
-                "t": "true"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1250,
-        "y": 100,
-        "wires": [
-            [
-                "c928f08217446419"
-            ],
-            []
-        ]
-    },
-    {
-        "id": "c226992612d4e581",
-        "type": "change",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "rules": [
-            {
-                "t": "move",
-                "p": "datum_payload",
-                "pt": "msg",
-                "to": "payload",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 880,
-        "y": 180,
-        "wires": [
-            [
-                "7d5ef9f277d6d75b"
-            ]
-        ]
-    },
-    {
-        "id": "e3bb4c0c491c9929",
-        "type": "debug",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 790,
-        "y": 80,
-        "wires": []
-    },
-    {
-        "id": "f39edec5bd26aecf",
-        "type": "function",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "func": "var data_payload = msg.payload.value.timeSeries[0];\n\nif (data_payload === undefined || data_payload.values.length < 2){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = data_payload.sourceInfo.siteCode[0].value;\n\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.sourceInfo.siteName + ' (' + station_id + ')';\nvar lat = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.latitude);\nvar lng = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.longitude);\nvar ts = Date.parse(data_payload.values[1].value[9].dateTime);\n\nvar fields = {\n            navd88_mm: Math.round(parseFloat(data_payload.values[1].value[9].value) * 304.8) + 'i' || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.influx_payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 340,
-        "y": 340,
-        "wires": [
-            [
-                "7021700bfe7cd70a"
-            ]
-        ]
-    },
-    {
-        "id": "7021700bfe7cd70a",
-        "type": "switch",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "property": "payload",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "nnull"
-            },
-            {
-                "t": "null"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 490,
-        "y": 300,
-        "wires": [
-            [
-                "d6295bc7bcba1302"
-            ],
-            []
-        ]
-    },
-    {
-        "id": "4ebeda902593462a",
-        "type": "debug",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1290,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "d6f6b3888bd06c8f",
-        "type": "function",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1340,
-        "y": 280,
-        "wires": [
-            [
-                "f0ed6eec16d38a64"
-            ]
-        ]
-    },
-    {
-        "id": "f0ed6eec16d38a64",
-        "type": "http request",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "method": "use",
-        "ret": "txt",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "authType": "",
-        "senderr": false,
-        "x": 1550,
-        "y": 280,
-        "wires": [
-            [
-                "98d5bacfccca5213"
-            ]
-        ]
-    },
-    {
-        "id": "98d5bacfccca5213",
-        "type": "function",
-        "z": "e0603b84198efa0a",
-        "name": "",
-        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1720,
-        "y": 280,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "97a92550bb51b952",
-        "type": "inject",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "15 05 * * *",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "[\t   'floodnet-live'\t]",
-        "payloadType": "jsonata",
-        "x": 70,
-        "y": 80,
-        "wires": [
-            [
-                "0d93778db11fa758"
-            ]
-        ]
-    },
-    {
-        "id": "bb90fef6fb25b7ee",
-        "type": "influxdb in",
-        "z": "54e1edf44c387788",
-        "influxdb": "4b9a03aed4358412",
-        "name": "",
-        "query": "",
-        "rawOutput": false,
-        "precision": "",
-        "retentionPolicy": "",
-        "org": "floodnet",
-        "x": 350,
-        "y": 260,
-        "wires": [
-            [
-                "c9d6973e721d7130",
-                "8744e043d5b34f18"
-            ]
-        ]
-    },
-    {
-        "id": "93083f815ba539af",
-        "type": "function",
-        "z": "54e1edf44c387788",
-        "name": "Create query",
-        "func": "var bucket_name = msg.payload;\nvar lookback_days = 3;\n\nvar std_limit = 10.0;\nvar max_val_filt = 4000;\n\nvar tz_offset = new Date().getTimezoneOffset() / 60;\n\nvar st_hour = 22;\nvar en_hour = 5;\n\nvar st_ts = new Date();\nst_ts.setDate(st_ts.getDate() - lookback_days);\nst_ts.setHours(st_hour);\nst_ts.setMinutes(0);\nst_ts.setSeconds(0);\nst_ts.setMilliseconds(0);\n\nvar st_hour_utc = st_ts.getHours() + tz_offset;\nif (st_hour_utc > 24){\n    st_hour_utc -= 24;\n}\n\nvar en_ts = new Date();\nen_ts.setHours(en_hour);\nen_ts.setMinutes(0);\nen_ts.setSeconds(0);\nen_ts.setMilliseconds(0);\n\nvar en_hour_utc = en_ts.getHours() + tz_offset;\nif (en_hour_utc > 24){\n    en_hour_utc -= 24;\n}\n\nvar meas_name = 'flood-sensor';\nvar app_name = bucket_name;\nvar field_name = 'dist_mm';\n\nvar agg_str = 'median';\n\nvar query = \n`\nimport \"date\"\ndata = from(bucket: \"${bucket_name}\")\n  |> range(start: ${st_ts.getTime() / 1000}, stop:${en_ts.getTime() / 1000})\n  |> filter(fn: (r) => r._measurement == \"${meas_name}\")\n  |> filter(fn: (r) => r.app_name == \"${app_name}\")\n  |> filter(fn: (r) => r._field == \"${field_name}\")\n  |> filter(fn: (r) => {\n    hour = date.hour(t: r._time)\n    return hour >= ${st_hour_utc} and hour < ${en_hour_utc}\n  })\n  |> filter(fn: (r) => r._value < ${max_val_filt})\n  |> keep(columns: [\"_value\", \"dev_id\", \"deployment_id\"])\n  |> toFloat()\n\nstd_var = data |> stddev()\nmed_var = data |> ${agg_str}()\njoin(tables: {stddev: std_var, ${agg_str}: med_var}, on: [\"deployment_id\"])\n|> rename(columns: {_value_median: \"${agg_str}\", _value_stddev: \"stddev\", dev_id_median: \"dev_id\"})\n|> filter(fn: (r) => r.stddev < ${std_limit})\n`\nmsg.query = query;\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 210,
-        "y": 200,
-        "wires": [
-            [
-                "bb90fef6fb25b7ee",
-                "d44fa3133fc3a99e",
-                "74c6b859f6e38b4d"
-            ]
-        ]
-    },
-    {
-        "id": "4257d78af3302b76",
-        "type": "debug",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 790,
-        "y": 320,
-        "wires": []
-    },
-    {
-        "id": "c9d6973e721d7130",
-        "type": "function",
-        "z": "54e1edf44c387788",
-        "name": "Create median insert",
-        "func": "var meas_array = [];\nvar med_array = [];\nvar dev_id_array = [];\nvar dep_id_array = [];\nfor (let i = 0; i < msg.payload.length; i++) {\n    var info = msg.payload[i]\n    \n    var global_var_name = info.dev_id + '.night_median';\n    global.set(global_var_name, info.median);\n    msg.median = info.median;\n    \n    med_array.push(msg.median);\n    dev_id_array.push(info.dev_id);\n    dep_id_array.push(info.deployment_id);\n    \n    var influx_entry = {\n        measurement: 'flood-sensor',\n        fields: {\n            night_median_mm: msg.median\n        },\n        tags:{\n            sensor_id: info.dev_id\n        },\n        timestamp: new Date().getTime()\n    };\n    meas_array.push(influx_entry);\n    \n}\nmsg.med_array = med_array;\nmsg.dev_id_array = dev_id_array;\nmsg.dep_id_array = dep_id_array;\nmsg.payload = meas_array;\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 320,
-        "wires": [
-            [
-                "45af59cd0c241688",
-                "4257d78af3302b76",
-                "8d7a70ac84459159"
-            ]
-        ]
-    },
-    {
-        "id": "45af59cd0c241688",
-        "type": "influxdb batch",
-        "z": "54e1edf44c387788",
-        "influxdb": "4b9a03aed4358412",
-        "precision": "",
-        "retentionPolicy": "",
-        "name": "Median insert",
-        "database": "database",
-        "precisionV18FluxV20": "ms",
-        "retentionPolicyV18Flux": "",
-        "org": "floodnet",
-        "bucket": "floodnet-live",
-        "x": 660,
-        "y": 380,
-        "wires": []
-    },
-    {
-        "id": "0d93778db11fa758",
-        "type": "split",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "splt": "\\n",
-        "spltType": "str",
-        "arraySplt": 1,
-        "arraySpltType": "len",
-        "stream": false,
-        "addname": "",
-        "x": 110,
-        "y": 140,
-        "wires": [
-            [
-                "93083f815ba539af"
-            ]
-        ]
-    },
-    {
-        "id": "d44fa3133fc3a99e",
-        "type": "debug",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 490,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "8d7a70ac84459159",
-        "type": "file in",
-        "z": "54e1edf44c387788",
-        "name": "Read dep_id file",
-        "filename": "/data/sensor_meta/deploy_id_map.txt",
-        "format": "utf8",
-        "chunk": false,
-        "sendError": false,
-        "encoding": "none",
-        "allProps": false,
-        "x": 700,
-        "y": 260,
-        "wires": [
-            [
-                "a5d2e4088c0d40da"
-            ]
-        ]
-    },
-    {
-        "id": "f1a3c9f0126fc622",
-        "type": "csv",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "sep": ",",
-        "hdrin": "",
-        "hdrout": "none",
-        "multi": "mult",
-        "ret": "\\n",
-        "temp": "",
-        "skip": "0",
-        "strings": true,
-        "include_empty_strings": "",
-        "include_null_values": "",
-        "x": 950,
-        "y": 320,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "a5d2e4088c0d40da",
-        "type": "function",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "func": "let lines = msg.payload.split(\"\\n\");\nlet found_match = false;\n\nmsg.dev_id_array.forEach((element, idx) => {\n    found_match = false;\n    lines.forEach((line, index) => {\n        var line_parts = line.split(\",\");\n        if (line_parts[0] == element) {\n            lines[index] = line_parts[0] + \",\" + line_parts[1] + \",\" + msg.med_array[idx];\n            found_match = true;\n        }\n    });\n    if (!found_match){\n        lines.push(msg.dev_id_array[idx] + \",\" + msg.dep_id_array[idx] + \",\" + msg.med_array[idx])\n    }\n});\n\nmsg.payload = lines.join(\"\\n\");\n\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 880,
-        "y": 260,
-        "wires": [
-            [
-                "d41bd81967a828fe"
-            ]
-        ]
-    },
-    {
-        "id": "4bb31c8faf430f5b",
-        "type": "inject",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "props": [
-            {
-                "p": "med_array",
-                "v": "[2654,2554,2387]",
-                "vt": "jsonata"
-            },
-            {
-                "p": "dev_id_array",
-                "v": "[\"fs-00001\",\"fs-00002\",\"fs-00003\"]",
-                "vt": "jsonata"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 530,
-        "y": 140,
-        "wires": [
-            [
-                "8d7a70ac84459159"
-            ]
-        ]
-    },
-    {
-        "id": "6f6058ae65e3a362",
-        "type": "debug",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1330,
-        "y": 260,
-        "wires": []
-    },
-    {
-        "id": "d41bd81967a828fe",
-        "type": "file",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "filename": "/data/sensor_meta/deploy_id_map.txt",
-        "appendNewline": false,
-        "createDir": true,
-        "overwriteFile": "true",
-        "encoding": "none",
-        "x": 1110,
-        "y": 260,
-        "wires": [
-            [
-                "6f6058ae65e3a362"
-            ]
-        ]
-    },
-    {
-        "id": "8744e043d5b34f18",
-        "type": "debug",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 730,
-        "y": 180,
-        "wires": []
-    },
-    {
-        "id": "74c6b859f6e38b4d",
-        "type": "debug",
-        "z": "54e1edf44c387788",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 430,
-        "y": 200,
         "wires": []
     },
     {
@@ -7027,8 +6829,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 690,
-        "y": 240,
+        "x": 710,
+        "y": 860,
         "wires": []
     },
     {
@@ -7043,8 +6845,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "Execute command",
-        "x": 400,
-        "y": 240,
+        "x": 420,
+        "y": 860,
         "wires": [
             [
                 "2d3dafa759849701"
@@ -7074,8 +6876,8 @@
         "topic": "",
         "payload": "floodnet-test",
         "payloadType": "str",
-        "x": 150,
-        "y": 240,
+        "x": 170,
+        "y": 860,
         "wires": [
             [
                 "9ca3c022c6a0eb66"
@@ -7094,8 +6896,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "",
-        "x": 520,
-        "y": 380,
+        "x": 540,
+        "y": 1000,
         "wires": [
             [
                 "12e5ae592c04939f"
@@ -7129,8 +6931,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 240,
-        "y": 400,
+        "x": 260,
+        "y": 1020,
         "wires": [
             [
                 "932bf5c3c09cdccd"
@@ -7149,8 +6951,124 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 850,
-        "y": 460,
+        "x": 870,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "05306c2848c4de07",
+        "type": "inject",
+        "z": "41b751a153893032",
+        "name": "update payload",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            },
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"deployment_id\":\"ugliest_cyan_elephant\",\"nearest_tidal_id\":\"usgs-tidal-01376562\",\"nearest_weather_station\":\"nyc-micronet-sifkil\"}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 100,
+        "wires": [
+            [
+                "55964170e772dc22"
+            ]
+        ]
+    },
+    {
+        "id": "55964170e772dc22",
+        "type": "function",
+        "z": "41b751a153893032",
+        "name": "Build Request",
+        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 100,
+        "wires": [
+            [
+                "a340971b5beb0434"
+            ]
+        ]
+    },
+    {
+        "id": "a340971b5beb0434",
+        "type": "http request",
+        "z": "41b751a153893032",
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 550,
+        "y": 100,
+        "wires": [
+            [
+                "7ae935df74f80fbd"
+            ]
+        ]
+    },
+    {
+        "id": "7ae935df74f80fbd",
+        "type": "function",
+        "z": "41b751a153893032",
+        "name": "Check Error",
+        "func": "if(msg.statusCode >= 200 && msg.statusCode < 300){\n    msg.response_fail = false;\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 100,
+        "wires": [
+            [
+                "087dbb635efd79a6"
+            ]
+        ]
+    },
+    {
+        "id": "087dbb635efd79a6",
+        "type": "debug",
+        "z": "41b751a153893032",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 890,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "c991f7fe8b5e6b21",
+        "type": "comment",
+        "z": "41b751a153893032",
+        "name": "Example full payload",
+        "info": "`{\n  \"sensor_display_name\": \"SI - Willow Rd E/Nina Ave\",\n  \"design_ver\": \"nyu_mk3\",\n  \"built_by\": \"floodnet_psc\", \n  \"sensor_address_borough\": \"Staten Island\",\n  \"sensor_address_neighborhood\": \"Graniteville\",\n  \"sensor_address_zip\": 10314,\n  \"sensor_address_state\": \"NY\",\n  \"date_deployed\": \"2022-07-22T17:00:00-05:00\",\n  \"date_down\": \"\",\n  \"deployment_id\": \"asleep_apricot_bedbug\",\n  \"sensor_types\": [\"range\"],\n  \"lat\": 40.61133023,\n  \"lon\": -74.1510578,\n  \"deploy_type\": \"pluvial\",\n  \"nearest_weather_station\": \"nyc-micronet-sifkil\",\n  \"nearest_tidal_id\": \"\",\n  \"community_contact_name\": \"\",\n  \"sensor_state\": \"started\",\n  \"sensor_agg\": \"median\",\n  \"sensor_sleep_s\": 60,\n  \"sensor_meas_delta_ms\": 150,\n  \"sensor_reading_count\": 5,\n  \"app_name\": \"floodnet-live\",\n  \"mounted_over\": \"Sidewalk\",\n  \"sensor_mount\": \"Street signpost\",\n  \"deployed_by\": \"FloodNet\",\n  \"sensor_status\": \"up\",\n  \"fk_status\": \"visible\"\n}`",
+        "x": 170,
+        "y": 160,
         "wires": []
     },
     {
