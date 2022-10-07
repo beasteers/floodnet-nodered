@@ -678,7 +678,8 @@
         "y": 440,
         "wires": [
             [
-                "62a33a2d546d7c2c"
+                "62a33a2d546d7c2c",
+                "c264632eaa92cc6a"
             ]
         ]
     },
@@ -737,7 +738,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "gw rain gauge decode",
-        "func": "var [ fields, tags, b ] = msg.payload.data;\ntags['deployment_id'] = msg.deployment_id;\n\nvar errorFlag = b[0];\nif (errorFlag < 253) {  // Regular Payload    \n    fields['acc_mm'] = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    fields['event_acc_mm'] = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    fields['total_acc_mm'] = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    fields['r_int_hr_mm'] = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    let unit = String.fromCharCode(b[16]);\n    tags['acc_unit'] = '' + (unit == 'm' ? 'mm' : 'in');\n}\n\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n];    \nreturn msg;",
+        "func": "var [ fields, tags, b ] = msg.payload.data;\ntags['deployment_id'] = msg.deployment_id;\n\nvar errorFlag = b[0];\nif (errorFlag < 253) {  // Regular Payload    \n    fields['acc_mm'] = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    fields['event_acc_mm'] = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    fields['total_acc_mm'] = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    fields['r_int_hr_mm'] = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    let unit = String.fromCharCode(b[16]);\n    tags['acc_unit'] = '' + (unit == 'm' ? 'mm' : 'in');\n    if (b.length > 15){\n        fields['bucket_acc_mm_min'] = parseInt(b[17], 2);\n    }\n}\n// node.warn(tags);\n// node.warn(tags['deployment_id']);\n// node.warn(b);\n// node.warn(fields['bucket_acc_mm_min']);\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n];    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -1186,25 +1187,6 @@
         "wires": []
     },
     {
-        "id": "3c0e39c427c2e21d",
-        "type": "function",
-        "z": "b8f9c9a92652ae8e",
-        "name": "ML buffer",
-        "func": "let buffer_size = 5;\nlet var_name = msg.dev_id + '_depth_buffer';\nlet depth_val = parseInt(msg.payload[0].fields.depth_filt_mm);\nif (flow.get(var_name) == undefined){\n    flow.set(var_name, []);\n}\n\nflow.get(var_name).push(depth_val);\n\nif (flow.get(var_name).length == buffer_size + 1){\n    flow.get(var_name).shift();\n}\n// node.warn(var_name);\nmsg.payload = flow.get(var_name);\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 760,
-        "y": 540,
-        "wires": [
-            [
-                "a53e22633b368005"
-            ]
-        ]
-    },
-    {
         "id": "62a33a2d546d7c2c",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
@@ -1224,20 +1206,22 @@
         ]
     },
     {
-        "id": "a53e22633b368005",
+        "id": "cc73a08cd9aa98f3",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "",
-        "func": "\nreturn msg;",
+        "name": "add i to ints",
+        "func": "var fields = msg.payload[0].fields;\n\n\nconst fixInt = (k) => {\n    const v = fields[k];\n    const i = parseInt(v);\n    if(!isNaN(i)) {\n        fields[k] = i + 'i';  \n    }\n}\n\nif(fields) {\n    fixInt('dist_mm');\n    fixInt('depth_raw_mm');\n    fixInt('depth_filt_mm');\n    fixInt('depth_proc_mm'); \n}\n\n\n\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 920,
-        "y": 540,
+        "x": 590,
+        "y": 420,
         "wires": [
-            []
+            [
+                "bb0aa76cdb8fa1d0"
+            ]
         ]
     },
     {
@@ -1258,21 +1242,342 @@
         "wires": []
     },
     {
-        "id": "cc73a08cd9aa98f3",
+        "id": "b1eb29fb9ed0901b",
+        "type": "http in",
+        "z": "b8f9c9a92652ae8e",
+        "name": "SENET endpoint",
+        "url": "/senet_device",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 700,
+        "y": 780,
+        "wires": [
+            [
+                "6223683d9da742fe"
+            ]
+        ]
+    },
+    {
+        "id": "6223683d9da742fe",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "c264632eaa92cc6a",
         "type": "function",
         "z": "b8f9c9a92652ae8e",
-        "name": "add i to ints",
-        "func": "var fields = msg.payload[0].fields;\n\n\nconst fixInt = (k) => {\n    const v = fields[k];\n    const i = parseInt(v);\n    if(!isNaN(i)) {\n        fields[k] = i + 'i';  \n    }\n}\n\nif(fields) {\n    fixInt('dist_mm');\n    fixInt('depth_raw_mm');\n    fixInt('depth_filt_mm');\n    fixInt('depth_proc_mm'); \n}\n\n\n\n\nreturn msg;",
+        "name": "Filters 🌈",
+        "func": "// add as different field name\nmsg.payload[0].fields.depth_proc2_mm=msg.payload[0].fields.depth_proc_mm;\nconst devid = msg.dev_id;\nconst fbank = global.get('getFilter')(devid)\nif(msg.historicalData && msg.historicalDataIndex === 0) {\n    fbank.clear();\n}\n\n\nconst msgs = fbank.filter(msg)\nfor(let m of msgs) {\n    const dist2 = m.payload[0].fields.depth_proc2_mm;\n    const dist = m.payload[0].fields.depth_proc_mm;\n    m.payload[0].fields.depth_proc_dist_mm=((dist||0) - (dist2||0))\n}\n\nreturn [ msgs ];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "\n\n\nclass Filter {\n    constructor({ name, depthField='depth_proc2_mm', maxMins=6, nHistory=0, isRaining=null }={}) {\n        this.name = name;\n        this.state = {};\n\n        this.maxMs = maxMins*60*1000;\n        this.depthField = depthField;\n        this._isRaining = isRaining;\n        this.state.buffer = new Deque(nHistory+1);\n    }\n    clear() {\n        this.state.buffer.length = 0;\n    }\n    isRaining(t) {\n        return this._isRaining ? this._isRaining(t) : null;\n    }\n    isInvalid(msg, t) {\n        // check if the time difference between points is very large\n        // if they are, we're less confident about the filter rules\n        let [m1, d1, t1] = this.state.buffer[this.state.buffer.length-2];\n        let invalid = this.maxMs && (t - t1) > this.maxMs;\n        if(invalid) {\n            // if it's not raining we can afford to be a bit more \n            // lenient with the filters.\n            const rain = this.isRaining(t);\n            invalid = invalid && rain; // only invalid if raining too\n            this.log(\n                rain ?\n                `blip invalid because of time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min and it's raining` :\n                `blip large time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min but it is not raining`)\n            this.setReason(msg, rain ? `?${this.name}:cancelled-rain-time-diff` : `?${this.name}:no-rain-time-diff`)\n        }\n        return invalid;\n    }\n\n    \n    log(...args) { node.warn(...args) }\n    unpack(msg) {\n        const {fields, timestamp} = msg.payload[0];\n        let depth = fields[this.depthField];\n        depth = depth == null ? 0 : parseInt(depth);\n        // if(isNaN(depth)) {\n        //     this.log(`${this.name}: bad depth value ${fields[this.depthField]}`);\n        //     depth = 0;\n        // }\n        return [depth, parseFloat(timestamp)];\n    }\n    override(msg, depth, reason=null) {\n        msg.payload[0].fields[this.depthField] = depth;\n        reason && this.setReason(msg, reason);\n        return msg;\n    }\n    setReason(msg, reason) {\n        let prevReason = msg.payload[0].fields.filter_reason || '';\n        msg.payload[0].fields.filter_reason = prevReason + '|' + reason;\n        return msg;\n    }\n}\n\n\nclass RangeFilter extends Filter {\n    constructor({ height=null, noiseFloor=10, name='range' }={}) {\n        super({ name });\n        this.height = height;\n        this.noiseFloor = noiseFloor;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        const night_median = msg.night_median;\n        // values below this are likely just noise\n        if(depth > 0 && depth < this.noiseFloor) this.override(msg, 0, 'range:noise-floor');\n        // values above this are not possible\n        if(this.height && depth > this.height) this.override(msg, null, 'range:max-height');\n        // values above this are not possible\n        if(night_median && depth > night_median) this.override(msg, null, 'range:night-median');\n        return [msg];\n    }\n}\n\nclass GradFilter extends Filter {\n    constructor({ inchmin=5, name='gradient' }={}) {\n        super({ name, nHistory: 1 });\n        this.min_mmps = inchmin * 25.4 / 60;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        // get the rate of change from the last point\n        const [m1, d1, t1] = this.state.buffer[0];\n        const dddt = (depth-d1) / Math.max(0.1, t - t1);\n        // check that the change in depth isn't too fast/improbable\n        if (dddt > this.min_mmps) {\n            this.log(`gradient filtered ${depth}mm ∆d/∆t=${dddt}mm/s`);\n            this.override(msg, d1, 'gradient');\n            this.state.buffer[this.state.buffer.length - 1][1] = d1;\n        }\n        return [msg];\n    }\n}\n\nclass BlipFilter extends Filter {\n    constructor({ maxMins=6, blipMinDist=2, blipRatio=0.1, downwardBlips=false, isRaining=null, name='blip' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.blipMinDist = blipMinDist;\n        this.blipRatio = blipRatio;\n        this.downwardBlips = downwardBlips;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.state.holding = false;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        if(this.state.holding) {\n            let [[m1,d1,t1], [m2,d2,t2], [m3,d3,t3]] = this.state.buffer;\n            // If the blip jump is greater than some threshold and then it goes\n            // back down to close to the same value, set it as the average of the \n            // first and third values.\n            const baseDist = Math.abs(d1 - d3);\n            let blipDist = d2 - d1;\n            blipDist = this.downwardBlips ? Math.abs(blipDist) : blipDist;\n            if (\n                (blipDist > this.blipMinDist) && \n                (baseDist / blipDist < this.blipRatio) && \n                !this.isInvalid(msg, t)\n            ) {\n                this.log(`blip filtered ${[d1, d2, d3]}`);\n                this.override(m2, (d1+d3)/2, this.name);\n            }\n            // blips are only held for one value\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        // check if it jumps up above the blip threshold\n        let dm1 = this.state.buffer[this.state.buffer.length-2][1];\n        if(depth - dm1 > this.blipMinDist) {\n            this.state.holding = true;\n            this.log(`blip hold ${dm1} ${depth}`);\n            return [];\n        }\n\n        return [msg];\n    }\n}\n\nclass BoxFilter extends Filter {\n    constructor({ maxDiff=2, maxInstantDiff=null, maxMins=6, isRaining=null, name='box' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.maxDiff = maxDiff;\n        this.maxInstantDiff = maxInstantDiff || maxDiff*2;\n        this.initialBox = null;\n        this.boxStart = null;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.boxDiff = 0;\n        this.state.holding = false;\n        this.state.filtering = false;\n        this.initialBox = null;\n        this.boxStart = null;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t])\n        if(this.state.buffer.length == 1) return [msg];\n\n        let [m2, d2, t2] = this.state.buffer[this.state.buffer.length-2];\n        if(this.state.filtering) {\n            // get the change between the last point\n            const dd = depth-d2;\n            // add it to the total box delta\n            this.boxDiff += dd;\n            // the the box conditions are met, squash it\n            if(\n                Math.abs(dd) < this.maxInstantDiff && \n                Math.abs(this.boxDiff) < this.maxDiff  && \n                !this.isInvalid(t)\n            ) {\n                // hulk squash\n                this.log(`box filter ${this.initialBox} ... ${[d2, depth]} ${Math.abs(this.boxDiff)} < ${this.maxDiff}`);\n                if(this.holding) {\n                    this.override(m2, 0, this.name);\n                }\n                this.override(msg, 0, this.name);\n            } else {\n                // otherwise stop filtering\n                this.log(`box hold released ${this.initialBox} ... ${[d2, depth]} - ${(t-this.boxStart)/1000/60}mins`);\n                this.state.filtering = false;\n            }\n        } else {\n            // check if box conditions are met\n            if(d2 === 0 && depth > 0) {\n                this.log(`box hold ${[d2,  depth]}`);\n                this.boxDiff = 0;\n                this.state.holding = true;\n                this.state.filtering = true;\n                this.initialBox = [d2,  depth];\n                this.boxStart = t;\n                return [];\n            }\n        }\n\n        // if we are holding a value, make sure to send it\n        if(this.state.holding) {\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        return [msg];\n    }\n}\n\n\nclass FilterBank {\n    constructor(filters) {\n        this.filters = filters;\n    }\n    filter(...msgs) {\n        return this.filters.reduce((msgs, f) => (\n            msgs.reduce((outputted, msg) => [...outputted, ...f.filter(msg)], [])\n        ), msgs);\n    }\n    clear() {\n        for(let f of this.filters) f.clear();\n    }\n}\n\n\nclass Deque extends Array {\n    constructor(maxsize) {\n        super();\n        this.maxsize = maxsize;\n    }\n    push(x) {\n      super.push(x);\n      while(this.length > this.maxsize) {\n        this.shift();\n      }\n    }\n}\n\nclass RainQueue extends Array {\n    constructor(maxage=60*60) {\n        super();\n        this.maxage = maxage;\n    }\n    push(rained, t) {\n        const now = Date.now()\n        \n        // append sorted\n        if(!this.length || t > this[this.length-1][1]) {\n            super.push([rained, t]);\n        }\n        else {\n            let i=this.length-1;\n            for(;t > this[i][1] && i>0;i--) { }\n            this.splice(i, 0, [rained, t]);\n        }\n        // trim off old samples\n        while(this.length && now - this[0][1] > this.maxage) {\n            this.shift();\n        }\n    }\n    anyRain() { return this.some(r => r[0]) }\n}\n\nconst buildFBank = (opts={}) => {\n    const isRaining = (t) => {\n        const rain = global.get('recentRain');\n        return rain && rain.anyRain();\n    }\n    return new FilterBank([\n        new RangeFilter({ ...opts }),\n        new GradFilter({ ...opts }),\n        new BlipFilter({ isRaining, ...opts }),\n        new BoxFilter({ isRaining, ...opts }),\n        new BlipFilter({ isRaining, ...opts }),\n    ]);\n}\n\nconst oldFbanks = global.get('filterBanks') || {};\nconst fbanks = {};\nfor(let k in oldFbanks) {\n    fbanks[k] = buildFBank();\n    for(let i in fbanks[k].filters) {\n        const f=fbanks[k].filters[i];\n        const fOld=oldFbanks[k].filters[i];\n        f.state = {...f.state, ...fOld.state};\n    }\n}\nglobal.set('filterBanks', fbanks);\n\nglobal.set('getFilter', (devid, opts={}) => {\n    if(!fbanks[devid]) fbanks[devid] = buildFBank(opts);\n    return fbanks[devid];\n});",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 600,
+        "wires": [
+            [
+                "79382d6929fd1351"
+            ]
+        ]
+    },
+    {
+        "id": "556b969c666144ec",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "show filtered",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "dev_id  & \" \" & \tpayload[0].fields.depth_proc_mm & \" \" & \tpayload[0].fields.depth_proc2_mm & \" \" & \tpayload[0].fields.filter_reason",
+        "targetType": "jsonata",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1110,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "24153e287f3f8bdd",
+        "type": "switch",
+        "z": "b8f9c9a92652ae8e",
+        "name": "filter reason",
+        "property": "payload[0].fields.filter_reason",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nempty"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 950,
+        "y": 480,
+        "wires": [
+            [
+                "556b969c666144ec"
+            ]
+        ]
+    },
+    {
+        "id": "b39284fbc6de11b2",
+        "type": "influxdb in",
+        "z": "b8f9c9a92652ae8e",
+        "influxdb": "4b9a03aed4358412",
+        "name": "",
+        "query": "",
+        "rawOutput": false,
+        "precision": "",
+        "retentionPolicy": "",
+        "org": "floodnet",
+        "x": 150,
+        "y": 760,
+        "wires": [
+            [
+                "bebb13a0df3fa53f",
+                "d638763947b3a8a6"
+            ]
+        ]
+    },
+    {
+        "id": "127e2829c288b414",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "query",
+        "func": "const start = msg.payload.start||\"-1h\";\nconst stop = msg.payload.stop||\"-1s\";\nconst depid = msg.payload.depid;//||\"easily_dear_mouse\";\nmsg.query = `\nfrom(bucket: \"floodnet-live\")\n  |> range(start: ${start}, stop: ${stop})\n  |> filter(fn: (r) => r[\"_measurement\"] == \"flood-sensor\")\n  |> filter(fn: (r) => r[\"_field\"] == \"depth_filt_mm\")\n  ${depid?`|> filter(fn: (r) => r[\"deployment_id\"] == \"${depid}\")\n  `:''}|> group(columns: [\"_field\", \"deployment_id\"])\n`\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 420,
+        "x": 90,
+        "y": 720,
         "wires": [
             [
-                "bb0aa76cdb8fa1d0"
+                "b39284fbc6de11b2"
+            ]
+        ]
+    },
+    {
+        "id": "66392d7396991cc1",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"start\": \"-14d\"}",
+        "payloadType": "json",
+        "x": 120,
+        "y": 680,
+        "wires": [
+            [
+                "127e2829c288b414"
+            ]
+        ]
+    },
+    {
+        "id": "bebb13a0df3fa53f",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "all",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 250,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "d638763947b3a8a6",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "row by row",
+        "func": "\nreturn [\n    msg.payload.map((d, i) => ({\n        deployment_id: d.deployment_id,\n        dev_id: d.dev_id,\n        payload: [{\n            measurement: 'flood-sensor',\n            timestamp: Date.parse(d._time),\n            fields: {depth_proc_mm: d._value},\n            tags: {\n                deployment_id: d.deployment_id,\n                dev_id: d.dev_id,\n            }\n        }],\n        historicalData: true,\n        historicalDataIndex: i\n    }))\n];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 230,
+        "y": 800,
+        "wires": [
+            [
+                "c264632eaa92cc6a"
+            ]
+        ]
+    },
+    {
+        "id": "37b961c8bdfd3251",
+        "type": "comment",
+        "z": "b8f9c9a92652ae8e",
+        "name": "priming the filters",
+        "info": "",
+        "x": 100,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "79382d6929fd1351",
+        "type": "switch",
+        "z": "b8f9c9a92652ae8e",
+        "name": "filter historical query",
+        "property": "historicalData",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 740,
+        "y": 480,
+        "wires": [
+            [
+                "a4283b483cc622e7"
+            ],
+            [
+                "a4283b483cc622e7",
+                "24153e287f3f8bdd"
+            ]
+        ]
+    },
+    {
+        "id": "e7b5a0015367fdfe",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"start\": \"-1h\"}",
+        "payloadType": "json",
+        "x": 110,
+        "y": 600,
+        "wires": [
+            [
+                "127e2829c288b414"
+            ]
+        ]
+    },
+    {
+        "id": "0b71a61fdae6eeea",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"start\": \"-3d\"}",
+        "payloadType": "json",
+        "x": 120,
+        "y": 640,
+        "wires": [
+            [
+                "127e2829c288b414"
+            ]
+        ]
+    },
+    {
+        "id": "44d8b8ed6820a65c",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "function 1",
+        "func": "node.warn(global.get('rainQueue'));\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 860,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "28d4c4a14b86b2fd",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 860,
+        "wires": [
+            [
+                "44d8b8ed6820a65c"
             ]
         ]
     },
@@ -1584,7 +1889,8 @@
         "wires": [
             [
                 "51f38eac8def364f",
-                "ceac54f342a9e889"
+                "ceac54f342a9e889",
+                "47af552e8a39de77"
             ]
         ]
     },
@@ -2011,22 +2317,6 @@
         "wires": []
     },
     {
-        "id": "3582eb8444820738",
-        "type": "debug",
-        "z": "59b6ea3e0dab2122",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 490,
-        "y": 100,
-        "wires": []
-    },
-    {
         "id": "96953e9380f6b289",
         "type": "debug",
         "z": "59b6ea3e0dab2122",
@@ -2042,6 +2332,23 @@
         "x": 650,
         "y": 100,
         "wires": []
+    },
+    {
+        "id": "47af552e8a39de77",
+        "type": "function",
+        "z": "59b6ea3e0dab2122",
+        "name": "Store if it's raining (for filters)",
+        "func": "\nconst rain = msg.payload[0].fields.max_precip_last_5min_mm_per_min;\nconst t = msg.payload[0].timestamp;\n\nglobal.get('rainQueue').push(rain, t);\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "// Code added here will be run once\n// whenever the node is started.\nclass RainQueue extends Array {\n    constructor(maxage=60*60) {\n        super();\n        this.maxage = maxage;\n    }\n    push(rained, t) {\n        const now = Date.now()\n        \n        // append sorted\n        if(!this.length || t > this[this.length-1][1]) {\n            super.push([rained, t]);\n        }\n        else {\n            let i=this.length-1;\n            for(;t > this[i][1] && i>0;i--) { }\n            this.splice(i, 0, [rained, t]);\n        }\n        // trim off old samples\n        while(this.length && now - this[0][1] > this.maxage*1000) {\n            this.shift();\n        }\n    }\n    anyRain() { return this.some(r => r[0]) }\n}\n\n\nconst rainQ = global.get('rainQueue') || new RainQueue(60 * 60);\nglobal.set('rainQueue', rainQ)",
+        "finalize": "",
+        "libs": [],
+        "x": 1380,
+        "y": 140,
+        "wires": [
+            []
+        ]
     },
     {
         "id": "9637d78579cb1b2b",
@@ -2384,7 +2691,7 @@
         "type": "function",
         "z": "e0603b84198efa0a",
         "name": "",
-        "func": "let new_entry = msg.dev_id;\n\nmsg.payload.forEach((datum_entry, index) => {\n    let datum_offset = parseFloat(datum_entry.tar_height) * 1000;\n    let navd88_val = parseInt(msg.influx_payload[0].fields.navd88_mm);\n    let datum_val = Math.round(navd88_val + datum_offset) + 'i';\n    msg.influx_payload[0].fields[datum_entry.tar_vertical_frame + \"_mm\"] = datum_val;\n    new_entry += ',' + datum_entry.tar_height;\n});\n\nmsg.lines.push(new_entry);\n\nconst clean_lines = msg.lines.filter(element => {\n  return element !== '';\n});\n\nmsg.lines = clean_lines.join(\"\\n\");\n\nmsg.payload = msg.influx_payload;\n\nreturn msg;",
+        "func": "\n\nmsg.influx_payload.forEach(function (item, val_index) {\n    msg.payload.forEach((datum_entry, datum_index) => {\n        let datum_offset = parseFloat(datum_entry.tar_height) * 1000;\n        let navd88_val = parseInt(item.fields.navd88_mm);\n        let datum_val = Math.round(navd88_val + datum_offset) + 'i';\n        msg.influx_payload[val_index].fields[datum_entry.tar_vertical_frame + \"_mm\"] = datum_val;\n        // new_entry += ',' + datum_entry.tar_height;\n    });\n});\n\n\n\n// msg.lines.push(new_entry);\n\n// const clean_lines = msg.lines.filter(element => {\n//   return element !== '';\n// });\n\n// msg.lines = clean_lines.join(\"\\n\");\n\nmsg.payload = msg.influx_payload;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2397,7 +2704,7 @@
                 "b37ac0e05846e70f",
                 "4d2ae3bb71a480eb",
                 "4ebeda902593462a",
-                "d6f6b3888bd06c8f"
+                "df20dc39e5cd477f"
             ]
         ]
     },
@@ -2531,7 +2838,7 @@
         "type": "function",
         "z": "e0603b84198efa0a",
         "name": "payload",
-        "func": "var data_payload = msg.payload.value.timeSeries[0];\n\nif (data_payload === undefined || data_payload.values.length < 2){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = data_payload.sourceInfo.siteCode[0].value;\n\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.sourceInfo.siteName + ' (' + station_id + ')';\nvar lat = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.latitude);\nvar lng = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.longitude);\n\n// Get the correct values array idx as one is measured and the other is predicted\nvar values_idx = 0;\nif (data_payload.values[0].method[0].methodID == 238983){\n    values_idx = 0;\n} else {\n    values_idx = 1;\n}\nvar data_values = data_payload.values[values_idx].value;\nvar num_of_vals = data_values.length;\nvar last_value = data_values[num_of_vals - 1];\n\nvar ts = Date.parse(last_value.dateTime);\n\nvar val = parseFloat(last_value.value);\n\n\nvar fields = {\n            navd88_mm: Math.round(val * 304.8) + 'i' || undefined\n        };\n        \nvar tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n        \nmsg.influx_payload = [\n    {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
+        "func": "var data_payload = msg.payload.value.timeSeries[0];\n\nif (data_payload === undefined || data_payload.values.length < 2){\n    msg.payload = null;\n    return msg;\n}\n\nvar station_id = data_payload.sourceInfo.siteCode[0].value;\n\nvar sensor_id = 'usgs-tidal-' + station_id;\nvar sensor_name = data_payload.sourceInfo.siteName + ' (' + station_id + ')';\nvar lat = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.latitude);\nvar lng = parseFloat(data_payload.sourceInfo.geoLocation.geogLocation.longitude);\n\n// Get the correct values array idx as one is measured and the other is predicted\nvar values_idx = 0;\nif (data_payload.values[0].method[0].methodDescription.includes(\"prediction\")){\n    values_idx = 1;\n}\n\nvar data_values = data_payload.values[values_idx].value;\n\nvar num_of_vals = data_values.length;\nvar last_value = data_values[num_of_vals - 1];\n\nmsg.influx_payload = [];\n\ndata_values.forEach(function (item, index) {\n    var ts = Date.parse(item.dateTime);\n    var val = parseFloat(item.value);\n    var fields = {\n            navd88_mm: Math.round(val * 304.8) + 'i' || undefined\n        };\n    var tags = {\n            sensor_id: sensor_id,\n            lat: lat,\n            lng: lng,\n            sensor_types: 'tide',\n            sensor_name: sensor_name\n        };\n    var db_entry = {\n        measurement: 'tide',\n        fields,\n        tags,\n        timestamp: ts\n    }\n    msg.influx_payload.push(db_entry);\n});\n\n\n\n\n        \n\n        \n// msg.influx_payload = [\n//     {\n//         measurement: 'tide',\n//         fields,\n//         tags,\n//         timestamp: ts\n//     }\n//     ];\n\nmsg.dev_id = sensor_id;\nmsg.lat = lat;\nmsg.lng = lng;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -2593,17 +2900,17 @@
         "type": "function",
         "z": "e0603b84198efa0a",
         "name": "Fieldkit POST",
-        "func": "msg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
+        "func": "msg.payload = [msg.payload];\n\n\nmsg.headers = {};\nmsg.method = \"POST\";\nmsg.url = 'https://api.fieldkit.org/ttn/webhook?token=33af8a9e936d2ec4c217de125ccfc4b9';\nmsg.headers[\"Content-Type\"]=\"application/json\";\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 300,
-        "y": 340,
+        "x": 560,
+        "y": 320,
         "wires": [
             [
-                "f0ed6eec16d38a64"
+                "95b86fc3e0052b27"
             ]
         ]
     },
@@ -2621,8 +2928,8 @@
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 470,
-        "y": 340,
+        "x": 850,
+        "y": 320,
         "wires": [
             [
                 "98d5bacfccca5213"
@@ -2640,8 +2947,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 630,
-        "y": 340,
+        "x": 1010,
+        "y": 320,
         "wires": [
             []
         ]
@@ -2660,6 +2967,57 @@
         "statusType": "auto",
         "x": 1140,
         "y": 180,
+        "wires": []
+    },
+    {
+        "id": "1ba8fd49927ecabc",
+        "type": "debug",
+        "z": "e0603b84198efa0a",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "df20dc39e5cd477f",
+        "type": "split",
+        "z": "e0603b84198efa0a",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 330,
+        "y": 320,
+        "wires": [
+            [
+                "d6f6b3888bd06c8f"
+            ]
+        ]
+    },
+    {
+        "id": "95b86fc3e0052b27",
+        "type": "debug",
+        "z": "e0603b84198efa0a",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 260,
         "wires": []
     },
     {
@@ -6974,7 +7332,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "{\"deployment_id\":\"ugliest_cyan_elephant\",\"nearest_tidal_id\":\"usgs-tidal-01376562\",\"nearest_weather_station\":\"nyc-micronet-sifkil\"}",
+        "payload": "{\"deployment_id\":\"daily_happy_satyr\",\"nearest_weather_station\":\"nyc-micronet-qnsozo\",\"nearest_tidal_id\":\"usgs-tidal-01311850\",\"mounted_over\":\"Sidewalk\"}",
         "payloadType": "json",
         "x": 160,
         "y": 100,
