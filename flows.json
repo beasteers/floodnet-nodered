@@ -649,7 +649,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "TTN V3 JSON processor",
-        "func": "if(msg.payload.downlink_nack !== undefined || msg.payload['uplink_message'] == undefined){\n    // Its a downlink, ignore but should probably log these at some point\n    return;\n}\n\nvar uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: '' + uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: '' + uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info['settings']['coding_rate'],\n            f_port: '' + uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']) + 'i',\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\nif (uplink_info['f_cnt'] + 'i' != 'undefinedi'){\n    fields.f_cnt = uplink_info['f_cnt'] + 'i'\n}\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi_dbm'] = gw_object_sorted[gw_key]['rssi'] + 'i';\n    fields['gw_' + gw_cnt + '_snr_db'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}else{\n    msg.app_type = dev_info['device_id'].slice(0, 2);\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep_s'] = '' + '' + sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = '' + sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta_ms'] = '' + sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = '' + sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = '' + sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = '' + fw_ver;\n\n\n}\nmsg.app_name = dev_info['application_ids']['application_id'];\nmsg.dev_id = dev_info['device_id'];\nmsg.payload = { data:\n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};\n\nmsg.orig_payload = msg.payload;\n\nreturn msg;",
+        "func": "if(msg.payload.downlink_nack !== undefined || msg.payload['uplink_message'] == undefined){\n    // Its a downlink, ignore but should probably log these at some point\n    return;\n}\n\nvar uplink_info = msg.payload['uplink_message'];\n\nif (typeof uplink_info == undefined)\n    return undefined;\n\nif (msg.payload['join_accept'])\n    return undefined;\n\nvar dev_info = msg.payload['end_device_ids'];\nvar tags = {\n            dev_id: dev_info['device_id'],\n            app_name: dev_info['application_ids']['application_id'],\n            dev_addr: dev_info['dev_addr'],\n            dev_eui: dev_info['dev_eui'],\n            network: 'ttn',\n            bw_hz: '' + uplink_info['settings']['data_rate']['lora']['bandwidth'],\n            sf: '' + uplink_info['settings']['data_rate']['lora']['spreading_factor'],\n            coding_rate: uplink_info.settings.data_rate.lora.coding_rate,\n            f_port: '' + uplink_info['f_port']\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_info['settings']['frequency']) + 'i',\n            airtime_s: parseFloat(uplink_info['consumed_airtime'].replace('s', ''))\n            \n        };\n\nif (uplink_info['f_cnt'] + 'i' != 'undefinedi'){\n    fields.f_cnt = uplink_info['f_cnt'] + 'i'\n}\n\n// Sort gateway data by RSSI strength\ngw_object = uplink_info['rx_metadata'];\ngw_object_sorted = gw_object.sort(function(a, b) {\n    return parseFloat(b.rssi) - parseFloat(a.rssi);\n});\n\nconst gw_keys = Object.keys(gw_object_sorted);\n\nvar gw_cnt = 0;\nfor (var gw_key of gw_keys) {\n    if (gw_object_sorted[gw_key].hasOwnProperty('packet_broker'))\n        continue;\n    gw_cnt += 1;\n    tags['gw_' + gw_cnt + '_id'] = gw_object_sorted[gw_key]['gateway_ids']['gateway_id'];\n    fields['gw_' + gw_cnt + '_rssi_dbm'] = gw_object_sorted[gw_key]['rssi'] + 'i';\n    fields['gw_' + gw_cnt + '_snr_db'] = gw_object_sorted[gw_key]['snr'];\n    \n}\n\nraw_payload = uplink_info['frm_payload'];\n\nif (!raw_payload){\n    msg.app_type = undefined;\n    return msg;\n}else{\n    msg.app_type = dev_info['device_id'].slice(0, 2);\n}\n\nvar binary_string = Buffer.from(raw_payload, \"base64\").toString('hex').match(/.{1,2}/g);\nvar len = binary_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(binary_string[i], 16);\n}\n\nvar errorFlag = b[0];\n\nif (errorFlag == 255) {\n    // Payload is Sensor cfg update\n    /*\n    CFG update uplink Format:\n    | Error Flag  |   sensor_sleep   |    sensor_agg     |   sensor_meas_delta     | sensor_reading_count   |    sensor_state   |    fw_ver       |\n    |    255 (FF) |     2 bytes      |      1 byte       |          2 bytes        |          1 byte        |        1 byte     |    6 bytes      |\n    \n    Sensor State:\n    |  Start  |   Stop  |  Reset  |\n    |   's'   |   'x'   |   'r'   |\n    \n    */\n    \n    // Duty cycle\n    var sensor_sleep = (b[2]<< 8) | b[1];\n    tags['sensor_sleep_s'] = '' + '' + sensor_sleep;\n    \n    // Sensor Mode\n    var sensor_agg = b[3];\n    tags['sensor_agg'] = '' + sensor_agg;\n    \n    // Sensor Sampling Rate\n    var sensor_meas_delta = (b[5] << 8) | b[4];\n    tags['sensor_meas_delta_ms'] = '' + sensor_meas_delta;\n    \n    // Sensor number of readings per measurement\n    var sensor_reading_count = b[6];\n    tags['sensor_reading_count'] = '' + sensor_reading_count;\n    \n    // Sensor State\n    var sensor_state = b[7].toString();\n    \n    if (sensor_state == \"115\"){\n      sensor_state = \"Sensing\";\n    } else if (sensor_state == \"120\"){\n      sensor_state = \"CFG Update\";\n    } else if (sensor_state == \"114\"){\n      sensor_state = \"Reset\";\n    }\n    tags['sensor_state'] = '' + sensor_state;\n    \n    // Firmware Version\n    let major = b[8].toString();\n    let minor = b[9].toString();\n    let patch = b[10].toString();\n    let v = \"v\";\n    let dot = \".\";\n    let fw_ver = v.concat(major,dot,minor,dot,patch);\n    \n    tags['fw_ver'] = '' + fw_ver;\n\n\n}\nmsg.app_name = dev_info['application_ids']['application_id'];\nmsg.dev_id = dev_info['device_id'];\nmsg.payload = { data:\n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_info['received_at'])\n};\n\nmsg.orig_payload = msg.payload;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -678,8 +678,7 @@
         "y": 440,
         "wires": [
             [
-                "c264632eaa92cc6a",
-                "62a33a2d546d7c2c"
+                "c264632eaa92cc6a"
             ]
         ]
     },
@@ -738,7 +737,7 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "gw rain gauge decode",
-        "func": "var [ fields, tags, b ] = msg.payload.data;\ntags['deployment_id'] = msg.deployment_id;\n\nvar errorFlag = b[0];\nif (errorFlag < 253) {  // Regular Payload    \n    fields['acc_mm'] = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    fields['event_acc_mm'] = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    fields['total_acc_mm'] = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    fields['r_int_hr_mm'] = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    let unit = String.fromCharCode(b[16]);\n    tags['acc_unit'] = '' + (unit == 'm' ? 'mm' : 'in');\n    if (b.length > 15){\n        fields['bucket_acc_mm_min'] = parseInt(b[17], 2);\n    }\n}\n// node.warn(tags);\n// node.warn(tags['deployment_id']);\n// node.warn(b);\n// node.warn(fields['bucket_acc_mm_min']);\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n];    \nreturn msg;",
+        "func": "var [ fields, tags, b ] = msg.payload.data;\ntags['deployment_id'] = msg.deployment_id;\n\nvar errorFlag = b[0];\nif (errorFlag < 253) {  // Regular Payload    \n    fields['acc_mm'] = (b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<32))/100;\n    fields['event_acc_mm'] = (b[4]|(b[5]<<8)|(b[6]<<16)|(b[7]<<32))/100;\n    fields['total_acc_mm'] = (b[8]|(b[9]<<8)|(b[10]<<16)|(b[11]<<32))/100;\n    fields['r_int_hr_mm'] = (b[12]|(b[13]<<8)|(b[14]<<16)|(b[15]<<32))/100;\n    let unit = String.fromCharCode(b[16]);\n    tags['acc_unit'] = '' + (unit == 'm' ? 'mm' : 'in');\n    if (b.length > 17){\n        //fields['bucket_acc_mm_min'] = parseInt(b[17], 2);\n        fields['bucket_acc_mm_min'] = (b[17]|(b[18]<<8))/1000;\n    }\n}\n// node.warn(tags);\n// node.warn(tags['deployment_id']);\n// node.warn(b);\n// node.warn(fields['bucket_acc_mm_min']);\nmsg.payload = [\n    {\n        measurement: 'gateway-rain-gauge',\n        fields,\n        tags,\n        timestamp: msg['ts']\n    }\n];    \nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -783,8 +782,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 310,
-        "y": 320,
+        "x": 330,
+        "y": 300,
         "wires": [
             [
                 "513fbc9cc32e5fc3"
@@ -804,7 +803,7 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-live",
-        "x": 960,
+        "x": 1180,
         "y": 340,
         "wires": []
     },
@@ -821,8 +820,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 470,
-        "y": 320,
+        "x": 510,
+        "y": 300,
         "wires": []
     },
     {
@@ -901,7 +900,7 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-lab",
-        "x": 960,
+        "x": 1180,
         "y": 380,
         "wires": []
     },
@@ -918,7 +917,7 @@
         "retentionPolicyV18Flux": "",
         "org": "floodnet",
         "bucket": "floodnet-test",
-        "x": 960,
+        "x": 1180,
         "y": 420,
         "wires": []
     },
@@ -949,12 +948,13 @@
         "checkall": "true",
         "repair": false,
         "outputs": 3,
-        "x": 770,
-        "y": 380,
+        "x": 910,
+        "y": 360,
         "wires": [
             [
                 "59c384dba7c30e0d",
-                "d1f0313a1241e95a"
+                "d1f0313a1241e95a",
+                "737878c160e53566"
             ],
             [
                 "3bfa5616beb0c833"
@@ -1036,7 +1036,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 980,
+        "x": 1200,
         "y": 300,
         "wires": [
             [
@@ -1058,7 +1058,7 @@
         "proxy": "",
         "authType": "",
         "senderr": false,
-        "x": 1150,
+        "x": 1370,
         "y": 300,
         "wires": [
             [
@@ -1077,7 +1077,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1310,
+        "x": 1530,
         "y": 300,
         "wires": [
             []
@@ -1197,12 +1197,10 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
-        "y": 480,
+        "x": 240,
+        "y": 1020,
         "wires": [
-            [
-                "cc73a08cd9aa98f3"
-            ]
+            []
         ]
     },
     {
@@ -1210,14 +1208,14 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "add i to ints",
-        "func": "var fields = msg.payload[0].fields;\n\n\nconst fixInt = (k) => {\n    const v = fields[k];\n    const i = parseInt(v);\n    if(!isNaN(i)) {\n        fields[k] = i + 'i';  \n    }\n}\n\nif(fields) {\n    fixInt('dist_mm');\n    fixInt('depth_raw_mm');\n    fixInt('depth_filt_mm');\n    fixInt('depth_proc_mm'); \n}\n\n\n\n\nreturn msg;",
+        "func": "var fields = msg.payload[0].fields;\n\n\nconst fixInt = (k) => {\n    const v = fields[k];\n    const i = parseInt(v);\n    if(!isNaN(i)) {\n        fields[k] = i + 'i';  \n    }\n}\n\nif(fields) {\n    fixInt('dist_mm');\n    fixInt('depth_raw_mm');\n    fixInt('depth_filt_mm');\n    fixInt('depth_proc_mm');\n    fixInt('depth_proc_dist_mm');\n}\n\n\n\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 590,
-        "y": 420,
+        "x": 730,
+        "y": 400,
         "wires": [
             [
                 "bb0aa76cdb8fa1d0"
@@ -1237,7 +1235,7 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1050,
+        "x": 1270,
         "y": 260,
         "wires": []
     },
@@ -1250,8 +1248,8 @@
         "method": "post",
         "upload": false,
         "swaggerDoc": "",
-        "x": 700,
-        "y": 780,
+        "x": 720,
+        "y": 1280,
         "wires": [
             [
                 "6223683d9da742fe"
@@ -1270,8 +1268,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 860,
-        "y": 780,
+        "x": 880,
+        "y": 1280,
         "wires": []
     },
     {
@@ -1279,17 +1277,17 @@
         "type": "function",
         "z": "b8f9c9a92652ae8e",
         "name": "Filters 🌈",
-        "func": "// add as different field name\nmsg.payload[0].fields.depth_proc2_mm=msg.payload[0].fields.depth_proc_mm;\nconst devid = msg.dev_id;\nconst fbank = context.get('getFilter')(devid)\nif(msg.historicalData && msg.historicalDataIndex === 0) {\n    fbank.clear();\n}\n\n\nconst msgs = fbank.filter(msg)\nfor(let m of msgs) {\n    const dist2 = m.payload[0].fields.depth_proc2_mm;\n    const dist = m.payload[0].fields.depth_proc_mm;\n    m.payload[0].fields.depth_proc_dist_mm=((dist||0) - (dist2||0))\n}\n\nreturn [ msgs ];",
+        "func": "// add as different field name\n// msg.payload[0].fields.depth_proc2_mm=msg.payload[0].fields.depth_proc_mm;\nconst devid = msg.dev_id;\nconst fbank = context.get('getFilter')(devid)\nif(msg.historicalData && msg.historicalDataIndex === 0) {\n    fbank.clear();\n}\n\n// Filters applied!\nconst msgs = fbank.filter(msg)\n\nfor(let m of msgs) {\n    const dist2 = m.payload[0].fields.depth_proc_mm;\n    const dist = m.payload[0].fields.depth_filt_mm;\n    m.payload[0].fields.depth_proc_dist_mm=((dist||0) - (dist2||0))\n}\n\nreturn [ msgs ];",
         "outputs": 1,
         "noerr": 0,
-        "initialize": "\n\n\nclass Filter {\n    constructor({ name, depthField='depth_proc2_mm', maxMins=6, nHistory=0, isRaining=null }={}) {\n        this.name = name;\n        this.state = {};\n\n        this.maxMs = maxMins*60*1000;\n        this.depthField = depthField;\n        this._isRaining = isRaining;\n        this.state.buffer = new Deque(nHistory+1);\n    }\n    clear() {\n        this.state.buffer.length = 0;\n    }\n    isRaining(t) {\n        return this._isRaining ? this._isRaining(t) : null;\n    }\n    isInvalid(msg, t) {\n        // check if the time difference between points is very large\n        // if they are, we're less confident about the filter rules\n        let [m1, d1, t1] = this.state.buffer[this.state.buffer.length-2];\n        let invalid = this.maxMs && (t - t1) > this.maxMs;\n        if(invalid) {\n            // if it's not raining we can afford to be a bit more \n            // lenient with the filters.\n            const rain = this.isRaining(t);\n            invalid = invalid && rain; // only invalid if raining too\n            this.log(\n                rain ?\n                `blip invalid because of time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min and it's raining` :\n                `blip large time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min but it is not raining`)\n            this.setReason(msg, rain ? `?${this.name}:cancelled-rain-time-diff` : `?${this.name}:no-rain-time-diff`)\n        }\n        return invalid;\n    }\n\n    \n    log(...args) { \n        node.warn(...args) \n    }\n    unpack(msg) {\n        const {fields, timestamp} = msg.payload[0];\n        let depth = fields[this.depthField];\n        depth = depth == null ? 0 : parseInt(depth);\n        // if(isNaN(depth)) {\n        //     this.log(`${this.name}: bad depth value ${fields[this.depthField]}`);\n        //     depth = 0;\n        // }\n        return [depth, parseFloat(timestamp)];\n    }\n    override(msg, depth, reason=null) {\n        msg.payload[0].fields[this.depthField] = depth;\n        reason && this.setReason(msg, reason);\n        return msg;\n    }\n    setReason(msg, reason) {\n        let prevReason = msg.payload[0].fields.filter_reason || '';\n        msg.payload[0].fields.filter_reason = prevReason + '|' + reason;\n        return msg;\n    }\n}\n\n\nclass RangeFilter extends Filter {\n    constructor({ height=null, noiseFloor=10, name='range' }={}) {\n        super({ name });\n        this.height = height;\n        this.noiseFloor = noiseFloor;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        const night_median = msg.night_median;\n        // values below this are likely just noise\n        if(depth > 0 && depth < this.noiseFloor) this.override(msg, 0, 'range:noise-floor');\n        // values above this are not possible\n        if(this.height && depth > this.height) this.override(msg, null, 'range:max-height');\n        // values above this are not possible\n        if(night_median && depth > night_median) this.override(msg, null, 'range:night-median');\n        return [msg];\n    }\n}\n\nclass GradFilter extends Filter {\n    constructor({ inchmin=5, name='gradient' }={}) {\n        super({ name, nHistory: 1 });\n        this.min_mmps = inchmin * 25.4 / 60;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        // get the rate of change from the last point\n        const [m1, d1, t1] = this.state.buffer[0];\n        const dddt = (depth-d1) / Math.max(0.1, t - t1);\n        // check that the change in depth isn't too fast/improbable\n        if (dddt > this.min_mmps) {\n            this.log(`gradient filtered ${d1} to ${depth}mm ∆d/∆t=${dddt}mm/s`);\n            this.override(msg, d1, 'gradient');\n            this.state.buffer[this.state.buffer.length - 1][1] = d1;\n        }\n        return [msg];\n    }\n}\n\nclass BlipFilter extends Filter {\n    constructor({ maxMins=6, blipMinDist=2, blipRatio=0.1, downwardBlips=false, isRaining=null, name='blip' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.blipMinDist = blipMinDist;\n        this.blipRatio = blipRatio;\n        this.downwardBlips = downwardBlips;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.state.holding = false;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        if(this.state.holding) {\n            let [[m1,d1,t1], [m2,d2,t2], [m3,d3,t3]] = this.state.buffer;\n            // If the blip jump is greater than some threshold and then it goes\n            // back down to close to the same value, set it as the average of the \n            // first and third values.\n            const baseDist = Math.abs(d1 - d3);\n            let blipDist = d2 - d1;\n            blipDist = this.downwardBlips ? Math.abs(blipDist) : blipDist;\n            if (\n                (blipDist > this.blipMinDist) && \n                (baseDist / blipDist < this.blipRatio) && \n                !this.isInvalid(msg, t)\n            ) {\n                // this.log(`blip filtered ${[d1, d2, d3]}`);\n                this.override(m2, (d1+d3)/2, this.name);\n            }\n            // blips are only held for one value\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        // check if it jumps up above the blip threshold\n        let dm1 = this.state.buffer[this.state.buffer.length-2][1];\n        if(depth - dm1 > this.blipMinDist) {\n            this.state.holding = true;\n            this.log(`blip hold ${dm1} ${depth}`);\n            return [];\n        }\n\n        return [msg];\n    }\n}\n\nclass BoxFilter extends Filter {\n    constructor({ boxRatio=0.05, maxMins=6, isRaining=null, name='box' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.boxRatio = boxRatio;\n        this.state.initialBox = null;\n        this.state.boxStart = null;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.boxDiff = 0;\n        this.state.holding = false;\n        this.state.filtering = false;\n        this.state.initialBox = null;\n        this.state.boxStart = null;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t])\n        if(this.state.buffer.length == 1) return [msg];\n\n        let [m2, d2, t2] = this.state.buffer[this.state.buffer.length-2];\n        if(this.state.filtering) {\n            // get the change between the last point\n            const dd = depth-d2;\n            // add it to the total box delta\n            this.state.boxDiff += dd;\n            // the the box conditions are met, squash it\n            if(\n                Math.abs(dd / this.state.boxJump) < this.boxRatio && \n                Math.abs(this.state.boxDiff / this.state.boxJump) < this.boxRatio  && \n                !this.isInvalid(t)\n            ) {\n                // hulk squash\n                this.log(`box filter ${this.state.initialBox} ... ${[d2, depth]} ${Math.abs(this.state.boxDiff)} / ${this.state.boxJump} > ${this.boxRatio}`);\n                if(this.holding) {\n                    this.override(m2, 0, this.name);\n                }\n                this.override(msg, 0, this.name);\n            } else {\n                // otherwise stop filtering\n                this.log(`box hold released ${this.state.initialBox} ... ${[d2, depth]} - ${(t-this.state.boxStart)/1000/60}mins`);\n                this.state.filtering = false;\n            }\n        } else {\n            // check if box conditions are met\n            if(d2 === 0 && depth > 0) {\n                this.log(`box hold ${[d2,  depth]}`);\n                this.state.boxDiff = 0;\n                this.state.holding = true;\n                this.state.filtering = true;\n                this.state.initialBox = [d2,  depth];\n                this.state.boxStart = t;\n                this.state.boxJump = depth - d2;\n                return [];\n            }\n        }\n\n        // if we are holding a value, make sure to send it\n        if(this.state.holding) {\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        return [msg];\n    }\n}\n\n\nclass FilterBank {\n    constructor(filters) {\n        this.filters = filters;\n    }\n    filter(...msgs) {\n        return this.filters.reduce((msgs, f) => (\n            msgs.reduce((outputted, msg) => [...outputted, ...f.filter(msg)], [])\n        ), msgs);\n    }\n    clear() {\n        for(let f of this.filters) f.clear();\n    }\n}\n\n\nclass Deque extends Array {\n    constructor(maxsize) {\n        super();\n        this.maxsize = maxsize;\n    }\n    push(x) {\n      super.push(x);\n      while(this.length > this.maxsize) {\n        this.shift();\n      }\n    }\n}\n\nclass RainQueue extends Array {\n    constructor(maxage=60*60) {\n        super();\n        this.maxage = maxage;\n    }\n    push(rained, t) {\n        const now = Date.now()\n        \n        // append sorted\n        if(!this.length || t > this[this.length-1][1]) {\n            super.push([rained, t]);\n        }\n        else {\n            let i=this.length-1;\n            for(;t > this[i][1] && i>0;i--) { }\n            this.splice(i, 0, [rained, t]);\n        }\n        // trim off old samples\n        while(this.length && now - this[0][1] > this.maxage) {\n            this.shift();\n        }\n    }\n    anyRain() { return this.some(r => r[0]) }\n}\n\nconst buildFBank = (opts={}) => {\n    const isRaining = (t) => {\n        const rain = global.get('recentRain');\n        if(!rain || t < rain[0][1]) return false;\n        return rain && rain.anyRain();\n    }\n    return new FilterBank([\n        new RangeFilter({ ...opts }),\n        new GradFilter({ ...opts }),\n        new BlipFilter({ isRaining, ...opts }),\n        new BoxFilter({ isRaining, ...opts }),\n        new BlipFilter({ isRaining, ...opts, name: 'blip2' }),\n    ]);\n}\n\nconst oldFbanks = context.get('filterBanks') || global.get('filterBanks') || {};\nconst fbanks = {};\nfor(let k in oldFbanks) {\n    fbanks[k] = buildFBank();\n    for(let i in fbanks[k].filters) {\n        const f=fbanks[k].filters[i];\n        const fOld=oldFbanks[k].filters[i];\n        f.state = {...f.state, ...fOld.state};\n    }\n}\ncontext.set('filterBanks', fbanks);\n\ncontext.set('getFilter', (devid, opts={}) => {\n    if(!fbanks[devid]) fbanks[devid] = buildFBank(opts);\n    return fbanks[devid];\n});",
+        "initialize": "\n\n\nclass Filter {\n    constructor({ name, depthField='depth_proc_mm', maxMins=6, nHistory=0, isRaining=null }={}) {\n        this.name = name;\n        this.state = {};\n\n        this.maxMs = maxMins*60*1000;\n        this.depthField = depthField;\n        this._isRaining = isRaining;\n        this.state.buffer = new Deque(nHistory+1);\n    }\n    clear() {\n        this.state.buffer.length = 0;\n    }\n    isRaining(t) {\n        return this._isRaining ? this._isRaining(t) : null;\n    }\n    isInvalid(msg, t) {\n        // check if the time difference between points is very large\n        // if they are, we're less confident about the filter rules\n        let [m1, d1, t1] = this.state.buffer[this.state.buffer.length-2];\n        let invalid = this.maxMs && (t - t1) > this.maxMs;\n        if(invalid) {\n            // if it's not raining we can afford to be a bit more \n            // lenient with the filters.\n            const rain = this.isRaining(t);\n            invalid = invalid && rain; // only invalid if raining too\n            this.log(\n                rain ?\n                `blip invalid because of time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min and it's raining` :\n                `blip large time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min but it is not raining`)\n            this.setReason(msg, rain ? `?${this.name}:cancelled-rain-time-diff` : `?${this.name}:no-rain-time-diff`)\n        }\n        return invalid;\n    }\n\n    \n    log(...args) { \n        node.warn(...args) \n    }\n    unpack(msg) {\n        const {fields, timestamp} = msg.payload[0];\n        let depth = fields[this.depthField];\n        depth = depth == null ? 0 : parseInt(depth);\n        // if(isNaN(depth)) {\n        //     this.log(`${this.name}: bad depth value ${fields[this.depthField]}`);\n        //     depth = 0;\n        // }\n        return [depth, parseFloat(timestamp)];\n    }\n    override(msg, depth, reason=null) {\n        msg.payload[0].fields[this.depthField] = depth;\n        reason && this.setReason(msg, reason);\n        return msg;\n    }\n    setReason(msg, reason) {\n        let prevReason = msg.payload[0].fields.filter_reason || '';\n        msg.payload[0].fields.filter_reason = prevReason + '|' + reason;\n        return msg;\n    }\n}\n\n\nclass RangeFilter extends Filter {\n    constructor({ height=null, noiseFloor=10, name='range' }={}) {\n        super({ name });\n        this.height = height;\n        this.noiseFloor = noiseFloor;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        const night_median = msg.night_median;\n        // values below this are likely just noise\n        if(depth > 0 && depth < this.noiseFloor) this.override(msg, 0, 'range:noise-floor');\n        // values above this are not possible\n        if(this.height && depth > this.height) this.override(msg, null, 'range:max-height');\n        // values above this are not possible\n        if(night_median && depth > night_median) this.override(msg, null, 'range:night-median');\n        return [msg];\n    }\n}\n\nclass GradFilter extends Filter {\n    constructor({ inchmin=5, name='gradient' }={}) {\n        super({ name, nHistory: 1 });\n        this.min_mmps = inchmin * 25.4 / 60;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        // get the rate of change from the last point\n        const [m1, d1, t1] = this.state.buffer[0];\n        const dddt = (depth-d1) / Math.max(0.1, t - t1);\n        // check that the change in depth isn't too fast/improbable\n        if (dddt > this.min_mmps) {\n            this.log(`gradient filtered ${d1} to ${depth}mm ∆d/∆t=${dddt}mm/s`);\n            this.override(msg, d1, 'gradient');\n            this.state.buffer[this.state.buffer.length - 1][1] = d1;\n        }\n        return [msg];\n    }\n}\n\nclass BlipFilter extends Filter {\n    constructor({ maxMins=6, blipMinDist=2, blipRatio=0.1, downwardBlips=false, isRaining=null, name='blip' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.blipMinDist = blipMinDist;\n        this.blipRatio = blipRatio;\n        this.downwardBlips = downwardBlips;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.state.holding = false;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        if(this.state.holding) {\n            let [[m1,d1,t1], [m2,d2,t2], [m3,d3,t3]] = this.state.buffer;\n            // If the blip jump is greater than some threshold and then it goes\n            // back down to close to the same value, set it as the average of the \n            // first and third values.\n            const baseDist = Math.abs(d1 - d3);\n            let blipDist = d2 - d1;\n            blipDist = this.downwardBlips ? Math.abs(blipDist) : blipDist;\n            if (\n                (blipDist > this.blipMinDist) && \n                (baseDist / blipDist < this.blipRatio) && \n                !this.isInvalid(msg, t)\n            ) {\n                this.log(`blip filtered ${[d1, d2, d3]}`);\n                this.override(m2, (d1+d3)/2, this.name);\n            }\n            // blips are only held for one value\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        // check if it jumps up above the blip threshold\n        let dm1 = this.state.buffer[this.state.buffer.length-2][1];\n        if(depth - dm1 > this.blipMinDist) {\n            this.state.holding = true;\n            this.log(`blip hold ${dm1} ${depth}`);\n            return [];\n        }\n\n        return [msg];\n    }\n}\n\nclass BoxFilter extends Filter {\n    constructor({ boxRatio=0.05, maxMins=6, isRaining=null, name='box' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.boxRatio = boxRatio;\n        this.state.initialBox = null;\n        this.state.boxStart = null;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.boxDiff = 0;\n        this.state.holding = false;\n        this.state.filtering = false;\n        this.state.initialBox = null;\n        this.state.boxStart = null;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t])\n        if(this.state.buffer.length == 1) return [msg];\n\n        let [m2, d2, t2] = this.state.buffer[this.state.buffer.length-2];\n        if(this.state.filtering) {\n            // get the change between the last point\n            const dd = depth-d2;\n            // add it to the total box delta\n            this.state.boxDiff += dd;\n            // the the box conditions are met, squash it\n            if(\n                Math.abs(dd / this.state.boxJump) < this.boxRatio && \n                Math.abs(this.state.boxDiff / this.state.boxJump) < this.boxRatio  && \n                !this.isInvalid(t)\n            ) {\n                // hulk squash\n                this.log(`box filter ${this.state.initialBox} ... ${[d2, depth]} ${Math.abs(this.state.boxDiff)} / ${this.state.boxJump} > ${this.boxRatio}`);\n                if(this.holding) {\n                    this.override(m2, 0, this.name);\n                }\n                this.override(msg, 0, this.name);\n            } else {\n                // otherwise stop filtering\n                this.log(`box hold released ${this.state.initialBox} ... ${[d2, depth]} - ${(t-this.state.boxStart)/1000/60}mins`);\n                this.state.filtering = false;\n            }\n        } else {\n            // check if box conditions are met\n            if(d2 === 0 && depth > 0) {\n                this.log(`box hold ${[d2,  depth]}`);\n                this.state.boxDiff = 0;\n                this.state.holding = true;\n                this.state.filtering = true;\n                this.state.initialBox = [d2,  depth];\n                this.state.boxStart = t;\n                this.state.boxJump = depth - d2;\n                return [];\n            }\n        }\n\n        // if we are holding a value, make sure to send it\n        if(this.state.holding) {\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        return [msg];\n    }\n}\n\n\nclass FilterBank {\n    constructor(filters) {\n        this.filters = filters;\n    }\n    filter(...msgs) {\n        return this.filters.reduce((msgs, f) => (\n            msgs.reduce((outputted, msg) => [...outputted, ...f.filter(msg)], [])\n        ), msgs);\n    }\n    clear() {\n        for(let f of this.filters) f.clear();\n    }\n}\n\n\nclass Deque extends Array {\n    constructor(maxsize) {\n        super();\n        this.maxsize = maxsize;\n    }\n    push(x) {\n      super.push(x);\n      while(this.length > this.maxsize) {\n        this.shift();\n      }\n    }\n}\n\nclass RainQueue extends Array {\n    constructor(maxage=60*60) {\n        super();\n        this.maxage = maxage;\n    }\n    push(rained, t) {\n        const now = Date.now()\n        \n        // append sorted\n        if(!this.length || t > this[this.length-1][1]) {\n            super.push([rained, t]);\n        }\n        else {\n            let i=this.length-1;\n            for(;t > this[i][1] && i>0;i--) { }\n            this.splice(i, 0, [rained, t]);\n        }\n        // trim off old samples\n        while(this.length && now - this[0][1] > this.maxage) {\n            this.shift();\n        }\n    }\n    anyRain() { return this.some(r => r[0]) }\n}\n\nconst buildFBank = (opts={}) => {\n    const isRaining = (t) => {\n        const rain = global.get('rainQueue');\n        if(!rain || t < rain[0][1]) return false;\n        return rain && rain.anyRain();\n    }\n    return new FilterBank([\n        new RangeFilter({ ...opts }),\n        new GradFilter({ ...opts }),\n        new BlipFilter({ isRaining, ...opts }),\n        new BoxFilter({ isRaining, ...opts }),\n        new BlipFilter({ isRaining, ...opts}),\n    ]);\n}\n\nconst oldFbanks = context.get('filterBanks') || global.get('filterBanks') || {};\nconst fbanks = {};\nfor(let k in oldFbanks) {\n    fbanks[k] = buildFBank();\n    for(let i in fbanks[k].filters) {\n        const f=fbanks[k].filters[i];\n        const fOld=oldFbanks[k].filters[i];\n        f.state = {...f.state, ...fOld.state};\n    }\n}\ncontext.set('filterBanks', fbanks);\n\ncontext.set('getFilter', (devid, opts={}) => {\n    if(!fbanks[devid]) fbanks[devid] = buildFBank(opts);\n    return fbanks[devid];\n});",
         "finalize": "",
         "libs": [],
-        "x": 480,
-        "y": 600,
+        "x": 540,
+        "y": 440,
         "wires": [
             [
-                "79382d6929fd1351"
+                "cc73a08cd9aa98f3"
             ]
         ]
     },
@@ -1306,8 +1304,8 @@
         "targetType": "jsonata",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1110,
-        "y": 480,
+        "x": 1190,
+        "y": 1080,
         "wires": []
     },
     {
@@ -1325,8 +1323,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 950,
-        "y": 480,
+        "x": 1010,
+        "y": 1080,
         "wires": [
             [
                 "556b969c666144ec"
@@ -1344,8 +1342,8 @@
         "precision": "",
         "retentionPolicy": "",
         "org": "floodnet",
-        "x": 150,
-        "y": 760,
+        "x": 170,
+        "y": 1260,
         "wires": [
             [
                 "bebb13a0df3fa53f",
@@ -1364,8 +1362,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 90,
-        "y": 720,
+        "x": 110,
+        "y": 1220,
         "wires": [
             [
                 "b39284fbc6de11b2"
@@ -1393,8 +1391,8 @@
         "topic": "",
         "payload": "{\"start\": \"-14d\"}",
         "payloadType": "json",
-        "x": 120,
-        "y": 680,
+        "x": 140,
+        "y": 1180,
         "wires": [
             [
                 "127e2829c288b414"
@@ -1414,8 +1412,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 250,
-        "y": 720,
+        "x": 270,
+        "y": 1220,
         "wires": []
     },
     {
@@ -1429,8 +1427,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 230,
-        "y": 800,
+        "x": 250,
+        "y": 1300,
         "wires": [
             [
                 "b55ce2cabb3819f5"
@@ -1443,8 +1441,8 @@
         "z": "b8f9c9a92652ae8e",
         "name": "priming the filters",
         "info": "",
-        "x": 100,
-        "y": 560,
+        "x": 120,
+        "y": 1060,
         "wires": []
     },
     {
@@ -1465,14 +1463,11 @@
         "checkall": "true",
         "repair": false,
         "outputs": 2,
-        "x": 740,
-        "y": 480,
+        "x": 800,
+        "y": 1080,
         "wires": [
+            [],
             [
-                "a4283b483cc622e7"
-            ],
-            [
-                "a4283b483cc622e7",
                 "24153e287f3f8bdd"
             ]
         ]
@@ -1498,8 +1493,8 @@
         "topic": "",
         "payload": "{\"start\": \"-1h\"}",
         "payloadType": "json",
-        "x": 110,
-        "y": 600,
+        "x": 130,
+        "y": 1100,
         "wires": [
             [
                 "127e2829c288b414"
@@ -1527,8 +1522,8 @@
         "topic": "",
         "payload": "{\"start\": \"-3d\"}",
         "payloadType": "json",
-        "x": 120,
-        "y": 640,
+        "x": 140,
+        "y": 1140,
         "wires": [
             [
                 "127e2829c288b414"
@@ -1546,8 +1541,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 360,
-        "y": 860,
+        "x": 380,
+        "y": 1360,
         "wires": [
             []
         ]
@@ -1573,8 +1568,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 220,
-        "y": 860,
+        "x": 240,
+        "y": 1360,
         "wires": [
             [
                 "44d8b8ed6820a65c"
@@ -1602,8 +1597,8 @@
         "topic": "",
         "payload": "{\"start\": \"-10d\", \"stop\": \"-0d\"}",
         "payloadType": "json",
-        "x": 90,
-        "y": 920,
+        "x": 110,
+        "y": 1420,
         "wires": [
             [
                 "127e2829c288b414"
@@ -1621,8 +1616,8 @@
         "initialize": "\n\n\nclass Filter {\n    constructor({ name, depthField='depth_proc2_mm', maxMins=6, nHistory=0, isRaining=null }={}) {\n        this.name = name;\n        this.state = {};\n\n        this.maxMs = maxMins*60*1000;\n        this.depthField = depthField;\n        this._isRaining = isRaining;\n        this.state.buffer = new Deque(nHistory+1);\n    }\n    clear() {\n        this.state.buffer.length = 0;\n    }\n    isRaining(t) {\n        return this._isRaining ? this._isRaining(t) : null;\n    }\n    isInvalid(msg, t) {\n        // check if the time difference between points is very large\n        // if they are, we're less confident about the filter rules\n        let [m1, d1, t1] = this.state.buffer[this.state.buffer.length-2];\n        let invalid = this.maxMs && (t - t1) > this.maxMs;\n        if(invalid) {\n            // if it's not raining we can afford to be a bit more \n            // lenient with the filters.\n            const rain = this.isRaining(t);\n            invalid = invalid && rain; // only invalid if raining too\n            this.log(\n                rain ?\n                `blip invalid because of time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min and it's raining` :\n                `blip large time difference ${(t - t1)/1000/60}min > ${this.maxMs/1000/60}min but it is not raining`)\n            this.setReason(msg, rain ? `?${this.name}:cancelled-rain-time-diff` : `?${this.name}:no-rain-time-diff`)\n        }\n        return invalid;\n    }\n\n    \n    log(...args) { \n        node.warn(...args) \n    }\n    unpack(msg) {\n        const {fields, timestamp} = msg.payload[0];\n        let depth = fields[this.depthField];\n        depth = depth == null ? 0 : parseInt(depth);\n        // if(isNaN(depth)) {\n        //     this.log(`${this.name}: bad depth value ${fields[this.depthField]}`);\n        //     depth = 0;\n        // }\n        return [depth, parseFloat(timestamp)];\n    }\n    override(msg, depth, reason=null) {\n        msg.payload[0].fields[this.depthField] = depth;\n        reason && this.setReason(msg, reason);\n        return msg;\n    }\n    setReason(msg, reason) {\n        let prevReason = msg.payload[0].fields.filter_reason || '';\n        msg.payload[0].fields.filter_reason = prevReason + '|' + reason;\n        return msg;\n    }\n}\n\n\nclass RangeFilter extends Filter {\n    constructor({ height=null, noiseFloor=10, name='range' }={}) {\n        super({ name });\n        this.height = height;\n        this.noiseFloor = noiseFloor;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        const night_median = msg.night_median;\n        // values below this are likely just noise\n        if(depth > 0 && depth < this.noiseFloor) this.override(msg, 0, 'range:noise-floor');\n        // values above this are not possible\n        if(this.height && depth > this.height) this.override(msg, null, 'range:max-height');\n        // values above this are not possible\n        if(night_median && depth > night_median) this.override(msg, null, 'range:night-median');\n        return [msg];\n    }\n}\n\nclass GradFilter extends Filter {\n    constructor({ inchmin=5, name='gradient' }={}) {\n        super({ name, nHistory: 1 });\n        this.min_mmps = inchmin * 25.4 / 60;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        // get the rate of change from the last point\n        const [m1, d1, t1] = this.state.buffer[0];\n        const dddt = (depth-d1) / Math.max(0.1, t - t1);\n        // check that the change in depth isn't too fast/improbable\n        if (dddt > this.min_mmps) {\n            this.log(`gradient filtered ${d1} to ${depth}mm ∆d/∆t=${dddt}mm/s`);\n            this.override(msg, d1, 'gradient');\n            this.state.buffer[this.state.buffer.length - 1][1] = d1;\n        }\n        return [msg];\n    }\n}\n\nclass BlipFilter extends Filter {\n    constructor({ maxMins=6, blipMinDist=2, blipRatio=0.1, downwardBlips=false, isRaining=null, name='blip' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.blipMinDist = blipMinDist;\n        this.blipRatio = blipRatio;\n        this.downwardBlips = downwardBlips;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.state.holding = false;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t]);\n        if(this.state.buffer.length == 1) return [msg];\n\n        if(this.state.holding) {\n            let [[m1,d1,t1], [m2,d2,t2], [m3,d3,t3]] = this.state.buffer;\n            // If the blip jump is greater than some threshold and then it goes\n            // back down to close to the same value, set it as the average of the \n            // first and third values.\n            const baseDist = Math.abs(d1 - d3);\n            let blipDist = d2 - d1;\n            blipDist = this.downwardBlips ? Math.abs(blipDist) : blipDist;\n            if (\n                (blipDist > this.blipMinDist) && \n                (baseDist / blipDist < this.blipRatio) && \n                !this.isInvalid(msg, t)\n            ) {\n                // this.log(`blip filtered ${[d1, d2, d3]}`);\n                this.override(m2, (d1+d3)/2, this.name);\n            }\n            // blips are only held for one value\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        // check if it jumps up above the blip threshold\n        let dm1 = this.state.buffer[this.state.buffer.length-2][1];\n        if(depth - dm1 > this.blipMinDist) {\n            this.state.holding = true;\n            this.log(`blip hold ${dm1} ${depth}`);\n            return [];\n        }\n\n        return [msg];\n    }\n}\n\nclass BoxFilter extends Filter {\n    constructor({ boxRatio=0.05, maxMins=6, isRaining=null, name='box' }) {\n        super({ name, maxMins, isRaining, nHistory: 2 });\n        this.boxRatio = boxRatio;\n        this.state.initialBox = null;\n        this.state.boxStart = null;\n        this.clear();\n    }\n    clear() { \n        super.clear();\n        this.boxDiff = 0;\n        this.state.holding = false;\n        this.state.filtering = false;\n        this.state.initialBox = null;\n        this.state.boxStart = null;\n    }\n    filter(msg) {\n        let [depth, t] = this.unpack(msg);\n        if(isNaN(depth)) return [msg];\n        this.state.buffer.push([msg, depth, t])\n        if(this.state.buffer.length == 1) return [msg];\n\n        let [m2, d2, t2] = this.state.buffer[this.state.buffer.length-2];\n        if(this.state.filtering) {\n            // get the change between the last point\n            const dd = depth-d2;\n            // add it to the total box delta\n            this.state.boxDiff += dd;\n            // the the box conditions are met, squash it\n            if(\n                Math.abs(dd / this.state.boxJump) < this.boxRatio && \n                Math.abs(this.state.boxDiff / this.state.boxJump) < this.boxRatio  && \n                !this.isInvalid(t)\n            ) {\n                // hulk squash\n                this.log(`box filter ${this.state.initialBox} ... ${[d2, depth]} ${Math.abs(this.state.boxDiff)} / ${this.state.boxJump} > ${this.boxRatio}`);\n                if(this.holding) {\n                    this.override(m2, 0, this.name);\n                }\n                this.override(msg, 0, this.name);\n            } else {\n                // otherwise stop filtering\n                this.log(`box hold released ${this.state.initialBox} ... ${[d2, depth]} - ${(t-this.state.boxStart)/1000/60}mins`);\n                this.state.filtering = false;\n            }\n        } else {\n            // check if box conditions are met\n            if(d2 === 0 && depth > 0) {\n                this.log(`box hold ${[d2,  depth]}`);\n                this.state.boxDiff = 0;\n                this.state.holding = true;\n                this.state.filtering = true;\n                this.state.initialBox = [d2,  depth];\n                this.state.boxStart = t;\n                this.state.boxJump = depth - d2;\n                return [];\n            }\n        }\n\n        // if we are holding a value, make sure to send it\n        if(this.state.holding) {\n            this.state.holding = false;\n            return [m2, msg];\n        }\n\n        return [msg];\n    }\n}\n\n\nclass FilterBank {\n    constructor(filters) {\n        this.filters = filters;\n    }\n    filter(...msgs) {\n        return this.filters.reduce((msgs, f) => (\n            msgs.reduce((outputted, msg) => [...outputted, ...f.filter(msg)], [])\n        ), msgs);\n    }\n    clear() {\n        for(let f of this.filters) f.clear();\n    }\n}\n\n\nclass Deque extends Array {\n    constructor(maxsize) {\n        super();\n        this.maxsize = maxsize;\n    }\n    push(x) {\n      super.push(x);\n      while(this.length > this.maxsize) {\n        this.shift();\n      }\n    }\n}\n\nclass RainQueue extends Array {\n    constructor(maxage=60*60) {\n        super();\n        this.maxage = maxage;\n    }\n    push(rained, t) {\n        const now = Date.now()\n        \n        // append sorted\n        if(!this.length || t > this[this.length-1][1]) {\n            super.push([rained, t]);\n        }\n        else {\n            let i=this.length-1;\n            for(;t > this[i][1] && i>0;i--) { }\n            this.splice(i, 0, [rained, t]);\n        }\n        // trim off old samples\n        while(this.length && now - this[0][1] > this.maxage) {\n            this.shift();\n        }\n    }\n    anyRain() { return this.some(r => r[0]) }\n}\n\nconst buildFBank = (opts={}) => {\n    const isRaining = (t) => {\n        const rain = global.get('recentRain');\n        if(!rain || t < rain[0][1]) return false;\n        return rain && rain.anyRain();\n    }\n    return new FilterBank([\n        new RangeFilter({ ...opts }),\n        new GradFilter({ ...opts }),\n        new BlipFilter({ isRaining, ...opts }),\n        new BoxFilter({ isRaining, ...opts }),\n        new BlipFilter({ isRaining, ...opts, name: 'blip2' }),\n    ]);\n}\n\nconst oldFbanks = context.get('filterBanks') || global.get('filterBanks') || {};\nconst fbanks = {};\nfor(let k in oldFbanks) {\n    fbanks[k] = buildFBank();\n    for(let i in fbanks[k].filters) {\n        const f=fbanks[k].filters[i];\n        const fOld=oldFbanks[k].filters[i];\n        f.state = {...f.state, ...fOld.state};\n    }\n}\ncontext.set('filterBanks', fbanks);\n\ncontext.set('getFilter', (devid, opts={}) => {\n    if(!fbanks[devid]) fbanks[devid] = buildFBank(opts);\n    return fbanks[devid];\n});",
         "finalize": "",
         "libs": [],
-        "x": 480,
-        "y": 680,
+        "x": 500,
+        "y": 1200,
         "wires": [
             [
                 "9d7816724d233124"
@@ -1646,8 +1641,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 660,
-        "y": 640,
+        "x": 680,
+        "y": 1200,
         "wires": [
             [
                 "353d0fcf175a07ca"
@@ -1666,8 +1661,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 860,
-        "y": 660,
+        "x": 880,
+        "y": 1160,
         "wires": []
     },
     {
@@ -1691,7 +1686,7 @@
         "reduceInitType": "num",
         "reduceFixup": "",
         "x": 670,
-        "y": 560,
+        "y": 1040,
         "wires": [
             [
                 "e59009b6723ab6d2"
@@ -1709,12 +1704,10 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 780,
-        "y": 520,
+        "x": 800,
+        "y": 1040,
         "wires": [
-            [
-                "a4283b483cc622e7"
-            ]
+            []
         ]
     },
     {
@@ -1738,8 +1731,8 @@
         "topic": "",
         "payload": "{\"start\":\"2022-09-13T14:00:00Z\",\"stop\":\"2022-09-13T18:06:00Z\",\"depid\":\"daily_happy_satyr\"}",
         "payloadType": "json",
-        "x": 90,
-        "y": 960,
+        "x": 110,
+        "y": 1460,
         "wires": [
             [
                 "127e2829c288b414"
@@ -1767,8 +1760,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 600,
-        "y": 940,
+        "x": 620,
+        "y": 1440,
         "wires": [
             [
                 "8d051e305b8be6ce"
@@ -1786,11 +1779,123 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 800,
-        "y": 940,
+        "x": 820,
+        "y": 1440,
         "wires": [
             []
         ]
+    },
+    {
+        "id": "737878c160e53566",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "debug 7",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1120,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "992f30b35502df9c",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "debug 8",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1020,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "d0c60036e4c8309e",
+        "type": "function",
+        "z": "b8f9c9a92652ae8e",
+        "name": "function 4",
+        "func": "node.warn(global.get('rainQueue'))\nnode.warn(global.get('rainQueue').anyRain())\nconsole.log(global.get('rainQueue'))\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 620,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "775b3f2d79744df3",
+        "type": "inject",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 500,
+        "y": 620,
+        "wires": [
+            [
+                "d0c60036e4c8309e"
+            ]
+        ]
+    },
+    {
+        "id": "0e59769571233982",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 730,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "25abb57de9d96cb7",
+        "type": "debug",
+        "z": "b8f9c9a92652ae8e",
+        "name": "debug 10",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1720,
+        "y": 300,
+        "wires": []
     },
     {
         "id": "62f132ed4b7660a9",
@@ -2549,7 +2654,7 @@
         "type": "function",
         "z": "59b6ea3e0dab2122",
         "name": "Store if it's raining (for filters)",
-        "func": "node.warn(msg.payload[0].fields)\nconst rain = msg.payload[0].fields.max_precip_last_5min_mm_per_min;\nconst t = msg.payload[0].timestamp;\n\nglobal.get('rainQueue').push(rain, t);\nnode.warn(global.get('rainQueue'))\nreturn msg;",
+        "func": "// node.warn(msg.payload[0].fields)\nconst rain = msg.payload[0].fields.max_precip_last_5min_mm_per_min;\nconst t = msg.payload[0].timestamp;\n\nglobal.get('rainQueue').push(rain, t);\n// node.warn(global.get('rainQueue'))\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "// Code added here will be run once\n// whenever the node is started.\nclass RainQueue extends Array {\n    constructor(maxage=60*60) {\n        super();\n        this.maxage = maxage;\n    }\n    push(rained, t) {\n        const now = Date.now()\n        \n        // append sorted\n        if(rained) {\n            if(!this.length || t > this[this.length-1][1]) {\n                super.push([rained, t]);\n            }\n            else {\n                let i=this.length-1;\n                for(;t > this[i][1] && i>0;i--) { }\n                this.splice(i, 0, [rained, t]);\n            }\n        }\n        \n        // trim off old samples\n        while(this.length && now - this[0][1] > this.maxage*1000) {\n            this.shift();\n        }\n    }\n    anyRain() { return this.some(r => r[0]) }\n}\n\n\nconst rainQ = global.get('rainQueue') || new RainQueue(60 * 60);\nglobal.set('rainQueue', rainQ)",
@@ -2560,6 +2665,48 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "e13448f276939e1c",
+        "type": "switch",
+        "z": "59b6ea3e0dab2122",
+        "name": "",
+        "property": "payload[0].fields.max_precip_last_5min_mm_per_min",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "neq",
+                "v": "undefined",
+                "vt": "jsonata"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 1310,
+        "y": 100,
+        "wires": [
+            [
+                "39a7a2d71fd3d93e"
+            ]
+        ]
+    },
+    {
+        "id": "39a7a2d71fd3d93e",
+        "type": "debug",
+        "z": "59b6ea3e0dab2122",
+        "name": "debug 9",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload[0].fields.max_precip_last_5min_mm_per_min",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1460,
+        "y": 100,
+        "wires": []
     },
     {
         "id": "9637d78579cb1b2b",
@@ -3121,8 +3268,7 @@
         "y": 320,
         "wires": [
             [
-                "f0ed6eec16d38a64",
-                "95b86fc3e0052b27"
+                "f0ed6eec16d38a64"
             ]
         ]
     },
@@ -7655,7 +7801,8 @@
         "wires": [
             [
                 "ed8b6a23239c8086",
-                "f62a9539afb8a385"
+                "f62a9539afb8a385",
+                "687f1b015c08439d"
             ]
         ]
     },
@@ -7672,8 +7819,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 680,
-        "y": 260,
+        "x": 720,
+        "y": 300,
         "wires": []
     },
     {
@@ -7683,8 +7830,8 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 570,
-        "y": 480,
+        "x": 490,
+        "y": 500,
         "wires": []
     },
     {
@@ -7692,19 +7839,47 @@
         "type": "function",
         "z": "41b751a153893032",
         "name": "Senet JSON processor",
-        "func": "var uplink_payload = msg.payload[0];\nvar tags = {\n            dev_id: uplink_payload.metadata,\n            dev_eui: uplink_payload.devEui,\n            network: 'senet',\n            f_port: uplink_payload[\"port\"],\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_payload['freq']) + 'i',\n        };\n\nif (uplink_payload['seqno'] + 'i' != 'undefinedi'){\n    fields.f_cnt = uplink_payload['seqno'] + 'i'\n}\n\nraw_payload = uplink_payload['pdu'];\n\nvar hex_string = Buffer.from(raw_payload, \"hex\");\nvar len = hex_string.length;\nvar b = new Uint8Array(len);\nfor (var i = 0; i < len; i++) {\n    b[i] = parseInt(hex_string[i], 16);\n}\n\nlet dist_mm = b[1]<<8 | b[0];\nvar batt_v;\n\nif (tags.dev_id.includes('e5')){\n    let batt_level_adc = b[3]<<8 | b[2];\n    batt_v = (batt_level_adc*4096)*3.3;    \n} else {\n     batt_v = b[3]<<8 | b[2];\n     batt_v /= 1000;\n}\n\nfields['dist_mm'] = dist_mm;\nfields['batt_v']  = batt_v;\n\nmsg.payload = { data:\n    [\n        fields,\n        tags,\n        b\n    ], 'app_type': msg['app_type'],\n    'ts': Date.parse(uplink_payload['received_at'])\n};\n\nmsg.orig_payload = msg.payload;\n\nreturn msg;",
+        "func": "var uplink_payload = msg.payload[0];\nvar tags = {\n            dev_id: uplink_payload.metadata,\n            dev_eui: uplink_payload.devEui,\n            network: 'senet',\n            f_port: '' + uplink_payload[\"port\"],\n            ack: uplink_payload.ack,\n            lat: uplink_payload.cfgLat,\n            lng: uplink_payload.cfgLng,\n            devClass: uplink_payload.devClass,\n        };\n\nvar fields = {\n            lora_freq_hz: parseInt(uplink_payload['freq']*1000000) + 'i',\n            datarate: uplink_payload['datarate'],\n            port: uplink_payload[\"port\"],\n            maxPayload: uplink_payload[\"maxPayload\"],\n            snr: uplink_payload['snr']\n        };\n\nif (uplink_payload['seqno'] + 'i' != 'undefinedi'){\n    fields.f_cnt = uplink_payload['seqno'] + 'i'\n}\n\nraw_payload = uplink_payload['pdu'];\n\nvar numBytes = raw_payload.length / 2;\nvar b = new Uint8Array(numBytes);\nfor (var i=0; i<numBytes; i++) {\n    b[i] = parseInt(raw_payload.substr(i*2, 2), 16);\n}\n\nvar dist_mm;\nvar batt_v;\n\nif (tags.dev_id.includes('e5')){\n    dist_mm = b[1]<<8 | b[0];\n    let batt_level_adc = b[3]<<8 | b[2];\n    batt_v = (batt_level_adc*3.3*23)/(4096*13);\n    batt_v = Number(batt_v.toFixed(3));\n} else {\n    dist_mm = b[4]<<8 | b[3];\n    batt_v = b[2]<<8 | b[1];\n    batt_v /= 1000;\n}\n\nfields['dist_mm'] = dist_mm;\nfields['batt_v']  = batt_v;\n\nmsg.payload = [\n    {\n        measurement: 'test',\n        fields,\n        tags,\n        timestamp: Date.now()\n    }\n];\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
         "x": 530,
-        "y": 340,
+        "y": 400,
         "wires": [
             [
-                "687f1b015c08439d"
+                "687f1b015c08439d",
+                "a8da8cd178d832c6"
             ]
         ]
+    },
+    {
+        "id": "a8da8cd178d832c6",
+        "type": "influxdb batch",
+        "z": "41b751a153893032",
+        "influxdb": "4b9a03aed4358412",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "senet test bucket",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "floodnet",
+        "bucket": "senet",
+        "x": 770,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "9098198cbd865256",
+        "type": "comment",
+        "z": "41b751a153893032",
+        "name": "todo",
+        "info": "# Need to decode the following\ng/w_rx_time and tx_time",
+        "x": 450,
+        "y": 340,
+        "wires": []
     },
     {
         "id": "bfa859424e47e623",
