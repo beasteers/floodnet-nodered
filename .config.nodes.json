@@ -794,25 +794,5 @@
                 "file": "/data/node_modules/node-red-contrib-tcp-client/tcp-client.js"
             }
         }
-    },
-    "node-red-contrib-postgresql": {
-        "name": "node-red-contrib-postgresql",
-        "version": "0.11.2",
-        "local": false,
-        "user": false,
-        "nodes": {
-            "postgresql": {
-                "name": "postgresql",
-                "types": [
-                    "postgreSQLConfig",
-                    "postgresql"
-                ],
-                "enabled": true,
-                "local": false,
-                "user": false,
-                "module": "node-red-contrib-postgresql",
-                "file": "/usr/src/node-red/node_modules/node-red-contrib-postgresql/postgresql.js"
-            }
-        }
     }
 }
